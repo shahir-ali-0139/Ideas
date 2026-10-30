@@ -111,19 +111,42 @@
     let audioCtx = null;
     let sfxGain = null;
     let bgmGain = null;
+    let bgmFilter = null;
     let isSoundMuted = false;
-    let isMusicMuted = true; // Off by default to avoid startling players, can be toggled
-    let bgmIntervalId = null;
-    let bgmNoteIndex = 0;
+    let isMusicMuted = false; // Enabled by default so background music plays while playing!
+    let isBgmRunning = false;
 
-    // Catchy retro chiptune melody notes (frequencies in Hz)
-    const BGM_MELODY = [
-      261.63, 329.63, 392.00, 523.25, // C4, E4, G4, C5
-      392.00, 329.63, 261.63, 329.63,
-      293.66, 349.23, 440.00, 587.33, // D4, F4, A4, D5
-      440.00, 349.23, 293.66, 349.23,
-      329.63, 392.00, 493.88, 659.25, // E4, G4, B4, E5
-      493.88, 392.00, 349.23, 293.66
+    // Lookahead Web Audio scheduler state (115 BPM upbeat 16th note timing)
+    let bgmTimerId = null;
+    let currentStep = 0;
+    let nextStepTime = 0;
+    const STEP_DURATION = 0.13;
+    const TOTAL_STEPS = 32;
+
+    // Cheerful, upbeat 8-bit arcade melody (notes in Hz, null = rest)
+    const MELODY_PATTERN = [
+      659.25, null, 783.99, null, 880.00, null, 1046.50, null, // E5, G5, A5, C6
+      987.77, null, 783.99, null, 880.00, 783.99, 659.25, null, // B5, G5, A5, G5, E5
+      587.33, null, 659.25, null, 783.99, null, 880.00, null,   // D5, E5, G5, A5
+      783.99, null, 659.25, null, 523.25, null, null, null,     // G5, E5, C5, rest
+
+      659.25, null, 783.99, null, 1046.50, null, 1174.66, null,// E5, G5, C6, D6
+      1318.51, null, 1174.66, null, 1046.50, null, 880.00, null,// E6, D6, C6, A5
+      783.99, null, 880.00, null, 1046.50, null, 987.77, null, // G5, A5, C6, B5
+      1046.50, null, 1046.50, null, null, null, null, null      // C6, C6, rest
+    ];
+
+    // Bouncy arcade bassline (notes in Hz)
+    const BASS_PATTERN = [
+      130.81, null, 98.00, null, 130.81, null, 98.00, null,   // C3, G2, C3, G2
+      110.00, null, 82.41, null, 110.00, null, 82.41, null,   // A2, E2, A2, E2
+      87.31, null, 130.81, null, 87.31, null, 130.81, null,   // F2, C3, F2, C3
+      98.00, null, 73.42, null, 98.00, null, 98.00, null,     // G2, D2, G2, G2
+
+      130.81, null, 98.00, null, 130.81, null, 98.00, null,   // C3, G2, C3, G2
+      110.00, null, 82.41, null, 110.00, null, 82.41, null,   // A2, E2, A2, E2
+      87.31, null, 130.81, null, 87.31, null, 130.81, null,   // F2, C3, F2, C3
+      98.00, null, 98.00, null, 130.81, null, null, null      // G2, G2, C3
     ];
 
     function initAudio() {
@@ -138,9 +161,15 @@
         sfxGain.gain.setValueAtTime(isSoundMuted ? 0 : 0.45, audioCtx.currentTime);
         sfxGain.connect(audioCtx.destination);
 
-        // BGM Master Channel
+        // BGM Master Channel with Warm Arcade Lowpass Filter
         bgmGain = audioCtx.createGain();
-        bgmGain.gain.setValueAtTime(isMusicMuted ? 0 : 0.15, audioCtx.currentTime);
+        bgmGain.gain.setValueAtTime(isMusicMuted ? 0 : 0.16, audioCtx.currentTime);
+
+        bgmFilter = audioCtx.createBiquadFilter();
+        bgmFilter.type = 'lowpass';
+        bgmFilter.frequency.setValueAtTime(1400, audioCtx.currentTime);
+
+        bgmFilter.connect(bgmGain);
         bgmGain.connect(audioCtx.destination);
       } catch (e) {
         console.warn('Web Audio not supported or blocked:', e);
@@ -152,6 +181,165 @@
       if (audioCtx && audioCtx.state === 'suspended') {
         audioCtx.resume();
       }
+    }
+
+    /**
+     * Plays a single melodic note on the lookahead clock
+     */
+    function playNote(freq, time, duration, isBass = false) {
+      if (!audioCtx || isMusicMuted) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const noteGain = audioCtx.createGain();
+
+        osc.type = isBass ? 'triangle' : 'square';
+        osc.frequency.setValueAtTime(freq, time);
+
+        const targetVol = isBass ? 0.32 : 0.22;
+        noteGain.gain.setValueAtTime(targetVol, time);
+        noteGain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+        osc.connect(noteGain);
+        noteGain.connect(bgmFilter || bgmGain);
+
+        osc.start(time);
+        osc.stop(time + duration);
+      } catch (e) {
+        // Ignore audio node glitches
+      }
+    }
+
+    /**
+     * Plays a soft retro percussive hi-hat on upbeat steps
+     */
+    function playPercussion(time) {
+      if (!audioCtx || isMusicMuted) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(800, time);
+        osc.frequency.exponentialRampToValueAtTime(80, time + 0.035);
+
+        gain.gain.setValueAtTime(0.06, time);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.035);
+
+        osc.connect(gain);
+        gain.connect(bgmGain);
+
+        osc.start(time);
+        osc.stop(time + 0.035);
+      } catch (e) {
+        // Ignore
+      }
+    }
+
+    /**
+     * Lookahead scheduler step
+     */
+    function scheduleStep(stepIndex, time) {
+      const melodyFreq = MELODY_PATTERN[stepIndex];
+      if (melodyFreq) {
+        playNote(melodyFreq, time, STEP_DURATION * 0.9, false);
+      }
+
+      const bassFreq = BASS_PATTERN[stepIndex];
+      if (bassFreq) {
+        playNote(bassFreq, time, STEP_DURATION * 1.8, true);
+      }
+
+      // Snappy rhythmic tick on offbeats
+      if (stepIndex % 4 === 2) {
+        playPercussion(time);
+      }
+    }
+
+    function schedulerLoop() {
+      if (!isBgmRunning || !audioCtx) return;
+      const scheduleAheadTime = 0.15; // 150ms lookahead window
+      while (nextStepTime < audioCtx.currentTime + scheduleAheadTime) {
+        scheduleStep(currentStep, nextStepTime);
+        nextStepTime += STEP_DURATION;
+        currentStep = (currentStep + 1) % TOTAL_STEPS;
+      }
+    }
+
+    function startBGM() {
+      ensureContextReady();
+      if (!audioCtx) return;
+      if (isBgmRunning) return;
+
+      isBgmRunning = true;
+      currentStep = 0;
+      nextStepTime = audioCtx.currentTime + 0.05;
+
+      if (bgmGain) {
+        bgmGain.gain.setValueAtTime(isMusicMuted ? 0 : 0.16, audioCtx.currentTime);
+      }
+
+      clearInterval(bgmTimerId);
+      bgmTimerId = setInterval(schedulerLoop, 35);
+    }
+
+    function pauseBGM() {
+      if (!isBgmRunning) return;
+      isBgmRunning = false;
+      clearInterval(bgmTimerId);
+      bgmTimerId = null;
+      if (bgmGain && audioCtx) {
+        bgmGain.gain.setValueAtTime(0, audioCtx.currentTime);
+      }
+    }
+
+    function resumeBGM() {
+      if (isMusicMuted || isBgmRunning) return;
+      ensureContextReady();
+      if (!audioCtx) return;
+
+      isBgmRunning = true;
+      nextStepTime = audioCtx.currentTime + 0.05;
+      if (bgmGain) {
+        bgmGain.gain.setValueAtTime(0.16, audioCtx.currentTime);
+      }
+      clearInterval(bgmTimerId);
+      bgmTimerId = setInterval(schedulerLoop, 35);
+    }
+
+    function stopBGM() {
+      isBgmRunning = false;
+      clearInterval(bgmTimerId);
+      bgmTimerId = null;
+      currentStep = 0;
+      if (bgmGain && audioCtx) {
+        bgmGain.gain.setValueAtTime(0, audioCtx.currentTime);
+      }
+    }
+
+    function toggleSound() {
+      isSoundMuted = !isSoundMuted;
+      if (sfxGain && audioCtx) {
+        sfxGain.gain.setValueAtTime(isSoundMuted ? 0 : 0.45, audioCtx.currentTime);
+      }
+      return !isSoundMuted;
+    }
+
+    function toggleMusic() {
+      isMusicMuted = !isMusicMuted;
+      ensureContextReady();
+      if (bgmGain && audioCtx) {
+        bgmGain.gain.setValueAtTime(isMusicMuted ? 0 : 0.16, audioCtx.currentTime);
+      }
+      if (!isMusicMuted) {
+        if (!isBgmRunning && currentState === STATES.PLAYING) {
+          startBGM();
+        }
+      } else {
+        if (isBgmRunning) {
+          pauseBGM();
+        }
+      }
+      return !isMusicMuted;
     }
 
     /**
@@ -187,7 +375,6 @@
       ensureContextReady();
       const now = audioCtx.currentTime;
 
-      // Note 1: High crisp tone
       const osc1 = audioCtx.createOscillator();
       const gain1 = audioCtx.createGain();
       osc1.type = 'sine';
@@ -201,7 +388,6 @@
       osc1.start(now);
       osc1.stop(now + 0.18);
 
-      // Note 2: Higher octave chime slightly delayed
       const osc2 = audioCtx.createOscillator();
       const gain2 = audioCtx.createGain();
       osc2.type = 'sine';
@@ -294,66 +480,6 @@
       });
     }
 
-    /**
-     * Starts background retro chiptune playback
-     */
-    function startBGM() {
-      if (bgmIntervalId || !audioCtx) return;
-      ensureContextReady();
-      bgmNoteIndex = 0;
-
-      bgmIntervalId = setInterval(() => {
-        if (isMusicMuted || !audioCtx) return;
-        const now = audioCtx.currentTime;
-        const freq = BGM_MELODY[bgmNoteIndex % BGM_MELODY.length];
-        bgmNoteIndex++;
-
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(freq, now);
-
-        gain.gain.setValueAtTime(0.06, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
-
-        osc.connect(gain);
-        gain.connect(bgmGain);
-
-        osc.start(now);
-        osc.stop(now + 0.16);
-      }, 180); // 180ms per 16th note
-    }
-
-    function stopBGM() {
-      if (bgmIntervalId) {
-        clearInterval(bgmIntervalId);
-        bgmIntervalId = null;
-      }
-    }
-
-    function toggleSound() {
-      isSoundMuted = !isSoundMuted;
-      if (sfxGain && audioCtx) {
-        sfxGain.gain.setValueAtTime(isSoundMuted ? 0 : 0.45, audioCtx.currentTime);
-      }
-      return !isSoundMuted;
-    }
-
-    function toggleMusic() {
-      isMusicMuted = !isMusicMuted;
-      ensureContextReady();
-      if (bgmGain && audioCtx) {
-        bgmGain.gain.setValueAtTime(isMusicMuted ? 0 : 0.15, audioCtx.currentTime);
-      }
-      if (!isMusicMuted && !bgmIntervalId) {
-        startBGM();
-      } else if (isMusicMuted) {
-        stopBGM();
-      }
-      return !isMusicMuted;
-    }
-
     return {
       initAudio,
       ensureContextReady,
@@ -363,6 +489,8 @@
       playDie,
       playCelebration,
       startBGM,
+      pauseBGM,
+      resumeBGM,
       stopBGM,
       toggleSound,
       toggleMusic,
@@ -1330,6 +1458,7 @@
 
     switch (newState) {
       case STATES.READY:
+        SoundSystem.stopBGM();
         bird.reset();
         pipeManager.reset();
         particles = [];
@@ -1342,14 +1471,16 @@
         break;
 
       case STATES.PLAYING:
-        // Gameplay actively running
+        SoundSystem.startBGM();
         break;
 
       case STATES.PAUSED:
+        SoundSystem.pauseBGM();
         pauseScreen.classList.add('active');
         break;
 
       case STATES.GAME_OVER:
+        SoundSystem.stopBGM();
         handleGameOver();
         break;
     }
@@ -1549,10 +1680,16 @@
       }
     }
 
-    // M key: Toggle Sound
+    // M key: Toggle Sound SFX
     if (e.code === 'KeyM') {
       e.preventDefault();
       toggleSoundUI();
+    }
+
+    // N key: Toggle Background Music
+    if (e.code === 'KeyN') {
+      e.preventDefault();
+      toggleMusicUI();
     }
 
     // R key: Quick restart on Game Over
@@ -1631,8 +1768,7 @@
     toggleSoundUI();
   });
 
-  musicBtn.addEventListener('click', function (e) {
-    e.stopPropagation();
+  function toggleMusicUI() {
     const isMusicOn = SoundSystem.toggleMusic();
     if (isMusicOn) {
       musicOnIcon.classList.remove('hidden');
@@ -1641,6 +1777,11 @@
       musicOnIcon.classList.add('hidden');
       musicOffIcon.classList.remove('hidden');
     }
+  }
+
+  musicBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    toggleMusicUI();
   });
 
   // Fullscreen support with graceful iOS Safari handling
