@@ -2,570 +2,319 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chess — Premium Browser Chess Platform</title>
-  <meta name="description" content="Experience high-fidelity browser chess with an advanced glassmorphism interface, vanilla JavaScript chess engine, tactical puzzles, opening explorer, and smart AI opponent.">
-  <link rel="stylesheet" href="styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Professional Chess – Human vs Advanced AI</title>
+  <!-- Favicon / Meta -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>♞</text></svg>">
+  <link rel="stylesheet" href="lib/pieces.css">
+  <link rel="stylesheet" href="style.css">
 </head>
-<body data-board-theme="cyber-neon" data-app-theme="dark">
-
-  <!-- Ambient Light Orbs for Glassmorphism Depth -->
-  <div class="space-backdrop" aria-hidden="true">
-    <div class="ambient-orb orb-1"></div>
-    <div class="ambient-orb orb-2"></div>
-    <div class="ambient-orb orb-3"></div>
-  </div>
-
-  <!-- Header Navigation & Controls -->
-  <header class="app-header" role="banner">
-    <div class="brand-section" id="brand-logo" tabindex="0" role="button" aria-label="  Chess Home">
-      <svg class="brand-logo-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="logoGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#00f0ff" />
-            <stop offset="100%" stop-color="#8b5cf6" />
-          </linearGradient>
-        </defs>
-        <circle cx="50" cy="50" r="46" stroke="url(#logoGlow)" stroke-width="3" stroke-dasharray="6 4" opacity="0.8"/>
-        <!-- Stylized Levitating Knight -->
-        <path d="M35 75 H65 L60 65 C60 65 65 55 60 45 C55 35 48 30 52 20 C42 22 36 30 36 36 C33 36 30 40 31 44 C33 46 38 46 38 46 C35 52 35 60 35 75 Z" fill="url(#logoGlow)" />
-        <circle cx="44" cy="32" r="3" fill="#ffffff" />
-      </svg>
-      <div class="brand-title">
-          <span class="brand-badge">CHESS</span>
-      </div>
-    </div>
-
-    <!-- Mode Navigation Tabs -->
-    <nav class="nav-tabs" role="tablist" aria-label="Platform Modes">
-      <button class="nav-tab-btn active" role="tab" aria-selected="true" data-tab="play" id="tab-nav-play">
-        <span>⚔️</span> Play
-      </button>
-      <button class="nav-tab-btn" role="tab" aria-selected="false" data-tab="puzzles" id="tab-nav-puzzles">
-        <span>🧩</span> Puzzles
-      </button>
-      <button class="nav-tab-btn" role="tab" aria-selected="false" data-tab="analysis" id="tab-nav-analysis">
-        <span>🔍</span> Analysis
-      </button>
-      <button class="nav-tab-btn" role="tab" aria-selected="false" data-tab="learn" id="tab-nav-learn">
-        <span>📚</span> Learn
-      </button>
-      <button class="nav-tab-btn" role="tab" aria-selected="false" data-tab="statistics" id="tab-nav-statistics">
-        <span>📊</span> Statistics
-      </button>
-    </nav>
-
-    <!-- Header Actions -->
-    <div class="header-actions">
-      <!-- Theme Switcher -->
-      <button class="icon-btn" id="btn-theme-toggle" title="Toggle Board Theme" aria-label="Toggle Board Theme">
-        🎨
-      </button>
-
-      <!-- Sound Toggle -->
-      <button class="icon-btn" id="btn-sound-toggle" title="Toggle Sound" aria-label="Toggle Audio">
-        <span id="sound-icon">🔊</span>
-      </button>
-
-      <!-- Settings Button -->
-      <button class="icon-btn" id="btn-open-settings" title="Game Settings" aria-label="Open Settings">
-        ⚙️
-      </button>
-
-      <!-- User Profile Badge -->
-      <div class="user-profile-badge" id="btn-user-profile" role="button" tabindex="0" aria-label="User Profile">
-        <div class="avatar" id="user-avatar-badge">ME</div>
-        <div class="profile-info">
-          <span class="profile-name" id="user-name-badge">Grandmaster</span>
-          <span class="profile-rating" id="user-rating-badge">1500</span>
+<body class="theme-tournament">
+  <div class="app-layout">
+    <!-- Top Navigation Bar -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-icon">
+          <span class="icon-crown">♚</span>
         </div>
-      </div>
-    </div>
-  </header>
-
-  <!-- Main Game Stage & Dashboard -->
-  <main class="main-wrapper" role="main">
-    
-    <!-- Central Chess Arena -->
-    <section class="chess-arena" aria-label="Interactive Chess Board">
-      
-      <!-- Interactive Play Mode Switcher Bar (Robot AI vs Manual Play) -->
-      <div class="play-mode-bar" id="play-mode-bar" role="toolbar" aria-label="Game Mode Switcher">
-        <div class="mode-segmented-control" role="radiogroup" aria-label="Game Opponent">
-          <button class="mode-seg-btn active" id="btn-mode-robot" data-mode="vs-computer" role="radio" aria-checked="true" title="Play vs Built-in Robot AI">
-            <span class="mode-seg-icon">🤖</span>
-            <span class="mode-seg-label">Robot AI</span>
-          </button>
-          <button class="mode-seg-btn" id="btn-mode-manual" data-mode="local-2p" role="radio" aria-checked="false" title="Local Two-Player Pass & Play">
-            <span class="mode-seg-icon">👥</span>
-            <span class="mode-seg-label">Manual (2P)</span>
-          </button>
-        </div>
-
-        <!-- Robot Options Sub-Bar -->
-        <div class="robot-controls-group" id="robot-controls-group">
-          <div class="robot-control-item">
-            <label for="select-robot-difficulty" class="robot-control-label">Level:</label>
-            <select id="select-robot-difficulty" class="glass-select glass-select-sm" title="Select Robot Difficulty">
-              <option value="1">Lv 1 · Casual</option>
-              <option value="2">Lv 2 · Intermediate</option>
-              <option value="3" selected>Lv 3 · Advanced</option>
-              <option value="4">Lv 4 · Expert</option>
-            </select>
-          </div>
-
-          <div class="robot-control-item">
-            <span class="robot-control-label">Side:</span>
-            <div class="color-toggle-group" role="radiogroup" aria-label="Choose Side">
-              <button class="color-toggle-btn active" id="btn-choose-white" data-color="white" title="Play as White (Move First)">
-                ⚪ White
-              </button>
-              <button class="color-toggle-btn" id="btn-choose-black" data-color="black" title="Play as Black (Robot Moves First)">
-                ⚫ Black
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Manual Play Badge Sub-Bar -->
-        <div class="manual-info-group" id="manual-info-group" style="display: none;">
-          <span class="manual-badge">👥 Pass &amp; Play · Local 2-Player</span>
+        <div class="brand-text">
+          <h1>CHESSMASTER <span class="badge-ai">AI</span></h1>
+          <p class="subtitle">Human vs Stockfish Grandmaster</p>
         </div>
       </div>
 
-      <!-- Opponent (Top) Player Card -->
-      <div class="player-card" id="top-player-card">
-        <div class="player-card-main">
-          <div class="avatar avatar-ai" id="top-avatar">AI</div>
+      <div class="header-actions">
+        <!-- Sound Toggle -->
+        <button id="btn-sound-toggle" class="btn-icon" title="Toggle Sound (Mute/Unmute)" aria-label="Toggle Sound">
+          <span class="icon-sound">🔊</span>
+        </button>
+
+        <!-- Theme Selector -->
+        <div class="theme-picker" title="Board Theme">
+          <select id="select-theme" aria-label="Board Theme">
+            <option value="theme-tournament">Emerald</option>
+            <option value="theme-wood">Classic Wood</option>
+            <option value="theme-midnight">Midnight Slate</option>
+            <option value="theme-classic">Black & White</option>
+          </select>
+        </div>
+
+        <!-- Engine Status Badge -->
+        <div id="engine-status-pill" class="status-pill status-ready">
+          <span class="status-dot"></span>
+          <span id="engine-status-text">Stockfish Ready</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Game Area -->
+    <main class="game-container">
+      <!-- Left: Chessboard Stage -->
+      <section class="board-stage">
+        <!-- Opponent (Computer) Player Card -->
+        <div class="player-card player-top" id="top-player-card">
           <div class="player-meta">
-            <div class="player-name-row">
-              <span class="player-name" id="top-name">Cyber Minimax</span>
-              <span class="player-rating-pill" id="top-rating">Depth 3</span>
+            <div class="player-avatar ai-avatar">
+              <span class="avatar-icon">🤖</span>
             </div>
-            <div class="captured-pieces-row">
-              <div class="captured-list" id="top-captured-pieces" aria-label="Captured pieces"></div>
-              <span class="material-diff" id="top-material-diff" style="display:none;"></span>
-            </div>
-          </div>
-        </div>
-        <div class="clock-display" id="top-clock" aria-label="Opponent Clock">
-          10:00
-        </div>
-      </div>
-
-      <!-- 8x8 Chessboard Container -->
-      <div class="board-outer-container">
-        <div class="board-inner" id="chess-board" role="grid" aria-label="Chessboard">
-          <!-- 64 squares populated dynamically by JavaScript -->
-        </div>
-      </div>
-
-      <!-- User (Bottom) Player Card -->
-      <div class="player-card active-turn" id="bottom-player-card">
-        <div class="player-card-main">
-          <div class="avatar" id="bottom-avatar">ME</div>
-          <div class="player-meta">
-            <div class="player-name-row">
-              <span class="player-name" id="bottom-name">Grandmaster</span>
-              <span class="player-rating-pill" id="bottom-rating">1500</span>
-            </div>
-            <div class="captured-pieces-row">
-              <div class="captured-list" id="bottom-captured-pieces" aria-label="Captured pieces"></div>
-              <span class="material-diff" id="bottom-material-diff" style="display:none;"></span>
+            <div class="player-details">
+              <div class="player-name-row">
+                <span class="player-name" id="top-player-name">Stockfish Engine</span>
+                <span class="color-badge" id="top-player-color-badge">Black</span>
+                <span class="difficulty-tag" id="top-player-diff-tag">Grandmaster</span>
+              </div>
+              <!-- Captured Pieces by Top Player -->
+              <div class="captured-row" id="top-captured-row">
+                <div class="captured-list" id="top-captured-list"></div>
+                <span class="material-lead" id="top-material-lead"></span>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="clock-display active-clock" id="bottom-clock" aria-label="Your Clock">
-          10:00
-        </div>
-      </div>
-
-      <!-- Action & Game Controls Bar -->
-      <div class="controls-bar" role="toolbar" aria-label="Game Controls">
-        <div class="control-group">
-          <button class="btn btn-sm" id="btn-flip-board" title="Flip Board Perspective (F)">
-            🔄 Flip
-          </button>
-          <button class="btn btn-sm" id="btn-undo-move" title="Takeback Move (Ctrl+Z)">
-            ↩ Undo
-          </button>
-          <button class="btn btn-sm" id="btn-redo-move" title="Redo Move (Ctrl+Y)">
-            ↪ Redo
-          </button>
-          <button class="btn btn-sm" id="btn-hint" title="Show Best Move Hint (H)">
-            💡 Hint
-          </button>
-        </div>
-
-        <div class="control-group">
-          <button class="btn btn-sm btn-primary" id="btn-new-game" title="Start a New Game">
-            ➕ New Game
-          </button>
-          <button class="btn btn-sm" id="btn-draw-offer" title="Offer a Draw">
-            🤝 Draw
-          </button>
-          <button class="btn btn-sm btn-danger" id="btn-resign" title="Resign Game">
-            🏳 Resign
-          </button>
-          <button class="btn btn-sm" id="btn-export-import" title="Import / Export FEN or PGN">
-            📋 PGN/FEN
-          </button>
-        </div>
-      </div>
-
-    </section>
-
-    <!-- Right-Side Glass Panel (Inspector & Tabs) -->
-    <aside class="inspector-panel glass-panel" aria-label="Game Inspector">
-      
-      <!-- Tab Header Switcher -->
-      <div class="inspector-header-tabs" role="tablist">
-        <button class="inspector-tab-btn active" data-target="tab-moves" role="tab" aria-selected="true">
-          Moves
-        </button>
-        <button class="inspector-tab-btn" data-target="tab-tips" role="tab" aria-selected="false">
-          Position
-        </button>
-        <button class="inspector-tab-btn" data-target="tab-puzzles-view" role="tab" aria-selected="false">
-          Puzzles
-        </button>
-        <button class="inspector-tab-btn" data-target="tab-learn-view" role="tab" aria-selected="false">
-          Learn
-        </button>
-        <button class="inspector-tab-btn" data-target="tab-stats-view" role="tab" aria-selected="false">
-          Stats
-        </button>
-      </div>
-
-      <div class="tab-content-container">
-        
-        <!-- Tab 1: Moves & Game Status -->
-        <div class="tab-pane active" id="tab-moves" role="tabpanel">
-          
-          <!-- Live Status Banner -->
-          <div class="status-banner" id="status-banner">
-            <div class="status-badge" id="game-status-badge">
-              <span class="status-dot"></span>
-              <span id="game-status-text">White to move</span>
+          <!-- Thinking Indicator -->
+          <div class="thinking-badge" id="ai-thinking-indicator" style="display: none;">
+            <div class="thinking-dots">
+              <span></span><span></span><span></span>
             </div>
-            <span class="game-mode-pill badge" id="current-mode-label">Local 2P</span>
+            <span class="thinking-label" id="ai-thinking-label">Thinking...</span>
           </div>
+        </div>
 
-          <!-- Dynamic Opening Identifier Card -->
-          <div class="opening-card" id="opening-card">
-            <div class="opening-title-row">
-              <span class="opening-name" id="opening-name-text">Standard Starting Position</span>
-              <span class="opening-eco" id="opening-eco-text">ECO A00</span>
-            </div>
-            <div class="opening-desc" id="opening-desc-text">
-              White moves first. Control the center with e4 or d4 and develop minor pieces.
-            </div>
-          </div>
-
-          <!-- Evaluation Bar & Advantage -->
-          <div class="eval-card" id="eval-card">
-            <div class="eval-score-row">
-              <span>Evaluation</span>
-              <span id="eval-score-text">0.0</span>
-            </div>
+        <!-- Chessboard Wrapper with Evaluation Bar -->
+        <div class="board-eval-wrapper">
+          <!-- Evaluation Bar -->
+          <div class="eval-bar-container" title="Position Evaluation">
             <div class="eval-bar-track">
               <div class="eval-bar-fill" id="eval-bar-fill"></div>
             </div>
+            <span class="eval-score-text" id="eval-score-text">0.0</span>
           </div>
 
-          <!-- Algebraic Move History Table -->
-          <div class="moves-table-container">
-            <div class="moves-list" id="moves-list" role="list" aria-label="Algebraic move history">
-              <!-- Dynamically populated: 1. e4 e5 ... -->
+          <!-- The 8x8 Chessboard -->
+          <div class="board-frame" id="board-frame">
+            <div class="chessboard" id="chessboard">
+              <!-- 64 Squares injected by JavaScript -->
             </div>
-          </div>
 
-          <!-- Move Navigation Buttons -->
-          <div class="move-nav-controls">
-            <button class="btn btn-sm" id="btn-move-start" title="First Move (Home)">⏮</button>
-            <button class="btn btn-sm" id="btn-move-prev" title="Previous Move (Left Arrow)">◀</button>
-            <button class="btn btn-sm" id="btn-move-next" title="Next Move (Right Arrow)">▶</button>
-            <button class="btn btn-sm" id="btn-move-end" title="Latest Move (End)">⏭</button>
-          </div>
+            <!-- Hint Arrow SVG Overlay -->
+            <svg class="board-overlay-svg" id="board-svg" viewBox="0 0 800 800">
+              <defs>
+                <marker id="arrowhead-hint" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto">
+                  <polygon points="0 0, 6 3, 0 6" fill="#f59e0b" />
+                </marker>
+              </defs>
+              <g id="svg-arrows"></g>
+            </svg>
 
-        </div>
-
-        <!-- Tab 2: Position Tips & Engine Analysis -->
-        <div class="tab-pane" id="tab-tips" role="tabpanel">
-          <div class="glass-card">
-            <h3 style="font-size: 1rem; margin-bottom: 8px;">Position Dynamics</h3>
-            <div style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.6;" id="position-tips-content">
-              Evaluating piece mobility, king safety, center control, and tactical vulnerabilities...
-            </div>
-          </div>
-
-          <div class="glass-card">
-            <h3 style="font-size: 1rem; margin-bottom: 8px;">Legal Move Count</h3>
-            <div style="display: flex; justify-content: space-between; font-size: 0.88rem;">
-              <span>Available Legal Moves:</span>
-              <strong id="legal-moves-count" style="color: var(--accent-cyan); font-family: var(--font-mono);">20</strong>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.88rem; margin-top: 6px;">
-              <span>Fifty-Move Clock:</span>
-              <strong id="halfmove-count" style="font-family: var(--font-mono);">0 / 50</strong>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.88rem; margin-top: 6px;">
-              <span>Position Repetition:</span>
-              <strong id="repetition-count" style="font-family: var(--font-mono);">1 / 3</strong>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tab 3: Tactical Puzzles -->
-        <div class="tab-pane" id="tab-puzzles-view" role="tabpanel">
-          <div class="puzzle-card">
-            <div class="puzzle-meta">
-              <span class="brand-badge" id="puzzle-badge">PUZZLE #1</span>
-              <span style="font-size: 0.8rem; color: var(--accent-gold);" id="puzzle-rating">Rating: 1450</span>
-            </div>
-            <div class="puzzle-prompt" id="puzzle-prompt">White to move and deliver checkmate in 1!</div>
-            <div class="puzzle-feedback" id="puzzle-feedback"></div>
-            <div style="display: flex; gap: 8px;">
-              <button class="btn btn-sm btn-primary" id="btn-next-puzzle">Next Puzzle ➡</button>
-              <button class="btn btn-sm" id="btn-puzzle-hint">Puzzle Hint</button>
-              <button class="btn btn-sm" id="btn-puzzle-reset">Reset</button>
+            <!-- Promotion Modal Overlay (Directly over the board) -->
+            <div class="promotion-overlay" id="promotion-overlay" style="display: none;">
+              <div class="promotion-dialog">
+                <h3>Choose Promotion Piece</h3>
+                <div class="promotion-choices" id="promotion-choices">
+                  <button class="promo-choice-btn" data-promo="q" title="Queen">
+                    <div class="promo-piece" id="promo-q"></div>
+                    <span>Queen</span>
+                  </button>
+                  <button class="promo-choice-btn" data-promo="r" title="Rook">
+                    <div class="promo-piece" id="promo-r"></div>
+                    <span>Rook</span>
+                  </button>
+                  <button class="promo-choice-btn" data-promo="b" title="Bishop">
+                    <div class="promo-piece" id="promo-b"></div>
+                    <span>Bishop</span>
+                  </button>
+                  <button class="promo-choice-btn" data-promo="n" title="Knight">
+                    <div class="promo-piece" id="promo-n"></div>
+                    <span>Knight</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Tab 4: Guided Lessons & Opening Repertoire -->
-        <div class="tab-pane" id="tab-learn-view" role="tabpanel">
-          <div class="learn-lesson-card">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <h3 style="font-size: 1rem;" id="lesson-title">Italian Game: Main Line</h3>
-              <span class="opening-eco" id="lesson-eco">C50</span>
+        <!-- Human Player Card -->
+        <div class="player-card player-bottom" id="bottom-player-card">
+          <div class="player-meta">
+            <div class="player-avatar human-avatar">
+              <span class="avatar-icon">👤</span>
             </div>
-            <div class="lesson-step-explanation" id="lesson-explanation">
-              Control the center with 1. e4, allowing rapid development of the light-squared bishop and kingside knight.
+            <div class="player-details">
+              <div class="player-name-row">
+                <span class="player-name" id="bottom-player-name">You (Human)</span>
+                <span class="color-badge" id="bottom-player-color-badge">White</span>
+                <span class="turn-pill" id="human-turn-pill">Your Turn</span>
+              </div>
+              <!-- Captured Pieces by Bottom Player -->
+              <div class="captured-row" id="bottom-captured-row">
+                <div class="captured-list" id="bottom-captured-list"></div>
+                <span class="material-lead" id="bottom-material-lead"></span>
+              </div>
             </div>
-            <div style="display: flex; gap: 8px; margin-top: 8px;">
-              <button class="btn btn-sm btn-primary" id="btn-lesson-next">Play Move ➡</button>
-              <button class="btn btn-sm" id="btn-lesson-prev">⏮ Step Back</button>
-              <button class="btn btn-sm" id="btn-lesson-reset">Restart Lesson</button>
+          </div>
+          <!-- Game Status Pill -->
+          <div class="game-turn-banner" id="game-turn-banner">
+            <span class="turn-indicator-dot"></span>
+            <span id="turn-banner-text">White to move</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Game Controls & Info Panel -->
+      <aside class="game-sidebar">
+        <!-- Status & Notification Card -->
+        <div class="sidebar-card status-card">
+          <div class="status-card-header">
+            <span class="card-icon">⚡</span>
+            <h2>Match Status</h2>
+            <span class="color-alternation-notice" id="color-cycle-notice">Game 1 • Human White</span>
+          </div>
+          <div class="status-message-box" id="status-message-box">
+            <p class="status-primary-text" id="status-primary-text">Game in progress</p>
+            <p class="status-secondary-text" id="status-secondary-text">Make your move or request a hint.</p>
+          </div>
+          <!-- Hint display box -->
+          <div class="hint-box" id="hint-box" style="display: none;">
+            <div class="hint-header">
+              <span class="hint-icon">💡</span>
+              <strong>Stockfish Analysis:</strong>
+            </div>
+            <div class="hint-content" id="hint-content">
+              Evaluating best move...
             </div>
           </div>
         </div>
 
-        <!-- Tab 5: Local Game Statistics -->
-        <div class="tab-pane" id="tab-stats-view" role="tabpanel">
-          <div class="stats-grid">
-            <div class="stat-item">
-              <span class="stat-label">Games Played</span>
-              <span class="stat-val" id="stat-games-played">0</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Win Rate</span>
-              <span class="stat-val" id="stat-win-rate">0%</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Wins</span>
-              <span class="stat-val" id="stat-wins" style="color: var(--accent-emerald);">0</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Losses</span>
-              <span class="stat-val" id="stat-losses" style="color: var(--accent-rose);">0</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Draws</span>
-              <span class="stat-val" id="stat-draws">0</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">Avg Duration</span>
-              <span class="stat-val" id="stat-avg-duration">0:00</span>
-            </div>
+        <!-- AI Difficulty Selector -->
+        <div class="sidebar-card difficulty-card">
+          <div class="card-title-row">
+            <label for="select-difficulty" class="card-label">Computer Strength</label>
+            <span class="diff-rating-badge" id="diff-rating-badge">ELO ~2850</span>
           </div>
-          <div style="margin-top: 12px; display: flex; justify-content: flex-end;">
-            <button class="btn btn-sm btn-danger" id="btn-reset-stats">Reset Statistics</button>
+          <select id="select-difficulty" class="styled-select">
+            <option value="easy">Easy (Skill 2 • Beginner)</option>
+            <option value="medium">Medium (Skill 7 • Intermediate)</option>
+            <option value="hard">Hard (Skill 13 • Advanced)</option>
+            <option value="expert">Expert (Skill 17 • Master)</option>
+            <option value="grandmaster" selected>Grandmaster (Max • World Class)</option>
+          </select>
+          <div class="diff-meter">
+            <div class="diff-meter-fill" id="diff-meter-fill" style="width: 100%;"></div>
           </div>
         </div>
 
-      </div>
-
-    </aside>
-
-  </main>
-
-  <!-- ==========================================================================
-       Modals & Overlays
-       ========================================================================== -->
-
-  <!-- Pawn Promotion Modal -->
-  <div class="modal-overlay" id="promotion-modal" role="dialog" aria-modal="true" aria-labelledby="promotion-modal-title">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h2 class="modal-title" id="promotion-modal-title">Promote Pawn</h2>
-      </div>
-      <p style="font-size: 0.88rem; color: var(--text-secondary);">
-        Choose a piece for promotion. You can also press Q, R, B, or N on your keyboard.
-      </p>
-      <div class="promotion-grid" id="promotion-choices-container">
-        <!-- Choices injected dynamically based on promoting color -->
-      </div>
-    </div>
-  </div>
-
-  <!-- Game Over Modal -->
-  <div class="modal-overlay" id="gameover-modal" role="dialog" aria-modal="true" aria-labelledby="gameover-modal-title">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h2 class="modal-title" id="gameover-modal-title">Game Over</h2>
-        <button class="modal-close-btn" id="btn-close-gameover" aria-label="Close">✕</button>
-      </div>
-      <div id="gameover-summary-text" style="font-size: 1.1rem; font-weight: 700; color: var(--accent-cyan); text-align: center; padding: 12px 0;">
-        Checkmate! White wins.
-      </div>
-      <p id="gameover-detail-text" style="font-size: 0.88rem; color: var(--text-secondary); text-align: center;">
-        The game concluded by checkmate.
-      </p>
-      <div style="display: flex; gap: 12px; justify-content: center; margin-top: 8px;">
-        <button class="btn btn-primary" id="btn-gameover-rematch">Rematch</button>
-        <button class="btn" id="btn-gameover-analyze">Analyze Game</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Resign Confirmation Modal -->
-  <div class="modal-overlay" id="resign-modal" role="dialog" aria-modal="true">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h2 class="modal-title">Resign Game?</h2>
-      </div>
-      <p style="font-size: 0.9rem; color: var(--text-secondary);">
-        Are you sure you want to resign this game? This will count as a loss in your local statistics.
-      </p>
-      <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 10px;">
-        <button class="btn" id="btn-cancel-resign">Cancel</button>
-        <button class="btn btn-danger" id="btn-confirm-resign">Yes, Resign</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Draw Offer Modal -->
-  <div class="modal-overlay" id="draw-modal" role="dialog" aria-modal="true">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h2 class="modal-title">Draw Offer</h2>
-      </div>
-      <p id="draw-modal-prompt" style="font-size: 0.9rem; color: var(--text-secondary);">
-        Offer a draw to your opponent? In Local 2P or vs Computer, the draw will be agreed.
-      </p>
-      <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 10px;">
-        <button class="btn" id="btn-cancel-draw">Cancel</button>
-        <button class="btn btn-primary" id="btn-confirm-draw">Agree to Draw</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- FEN & PGN Import/Export Modal -->
-  <div class="modal-overlay" id="export-import-modal" role="dialog" aria-modal="true">
-    <div class="modal-box" style="max-width: 600px;">
-      <div class="modal-header">
-        <h2 class="modal-title">FEN & PGN Data</h2>
-        <button class="modal-close-btn" id="btn-close-export-import" aria-label="Close">✕</button>
-      </div>
-      
-      <div class="settings-group">
-        <label class="settings-label" for="fen-io-input">Current Position FEN:</label>
-        <input type="text" id="fen-io-input" class="glass-input" readonly>
-        <div style="display: flex; gap: 8px; margin-top: 4px;">
-          <button class="btn btn-sm" id="btn-copy-fen">Copy FEN</button>
-          <button class="btn btn-sm btn-primary" id="btn-load-fen">Load FEN</button>
+        <!-- Action Control Buttons -->
+        <div class="sidebar-card actions-card">
+          <div class="actions-grid">
+            <button id="btn-new-game" class="btn btn-primary" title="Start fresh game and alternate color">
+              <span class="btn-icon">✨</span>
+              <span class="btn-text">New Game</span>
+            </button>
+            <button id="btn-restart" class="btn btn-secondary" title="Reset and alternate color">
+              <span class="btn-icon">🔄</span>
+              <span class="btn-text">Restart</span>
+            </button>
+            <button id="btn-undo" class="btn btn-secondary" title="Take back last move">
+              <span class="btn-icon">↩️</span>
+              <span class="btn-text">Undo</span>
+            </button>
+            <button id="btn-hint" class="btn btn-accent" title="Get Stockfish move recommendation">
+              <span class="btn-icon">💡</span>
+              <span class="btn-text">Hint</span>
+            </button>
+            <button id="btn-flip" class="btn btn-ghost" title="Manually flip the board orientation">
+              <span class="btn-icon">🔃</span>
+              <span class="btn-text">Flip Board</span>
+            </button>
+            <button id="btn-resign" class="btn btn-danger" title="Resign current game">
+              <span class="btn-icon">🏳️</span>
+              <span class="btn-text">Resign</span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div class="settings-group" style="margin-top: 8px;">
-        <label class="settings-label" for="pgn-io-input">Game PGN:</label>
-        <textarea id="pgn-io-input" class="glass-input" rows="5" style="resize: vertical; font-family: var(--font-mono); font-size: 0.8rem;"></textarea>
-        <div style="display: flex; gap: 8px; margin-top: 4px;">
-          <button class="btn btn-sm" id="btn-copy-pgn">Copy PGN</button>
-          <button class="btn btn-sm btn-primary" id="btn-load-pgn">Load PGN</button>
+        <!-- Move History Table -->
+        <div class="sidebar-card moves-card">
+          <div class="moves-header">
+            <h3>Move History</h3>
+            <span class="move-counter" id="move-counter">0 moves</span>
+          </div>
+          <div class="moves-table-container" id="moves-container">
+            <table class="moves-table" id="moves-table">
+              <thead>
+                <tr>
+                  <th class="th-num">#</th>
+                  <th class="th-white">White</th>
+                  <th class="th-black">Black</th>
+                </tr>
+              </thead>
+              <tbody id="moves-tbody">
+                <!-- Move rows added here dynamically -->
+              </tbody>
+            </table>
+            <div class="empty-moves-msg" id="empty-moves-msg">
+              Moves will appear here as the game progresses.
+            </div>
+          </div>
+          <!-- PGN / FEN Utility Buttons -->
+          <div class="pgn-tools">
+            <button id="btn-copy-fen" class="btn-tool" title="Copy FEN to clipboard">Copy FEN</button>
+            <button id="btn-copy-pgn" class="btn-tool" title="Copy PGN to clipboard">Copy PGN</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Game Over Modal -->
+    <div class="modal-backdrop" id="game-over-modal" style="display: none;">
+      <div class="modal-card modal-game-over">
+        <div class="modal-trophy-icon" id="modal-result-icon">🏆</div>
+        <h2 id="modal-result-title">Victory!</h2>
+        <p class="modal-result-subtitle" id="modal-result-subtitle">You defeated Stockfish AI by checkmate.</p>
+        
+        <div class="modal-stats-box">
+          <div class="modal-stat">
+            <span class="stat-label">Total Moves</span>
+            <span class="stat-value" id="modal-stat-moves">34</span>
+          </div>
+          <div class="modal-stat">
+            <span class="stat-label">Difficulty</span>
+            <span class="stat-value" id="modal-stat-diff">Grandmaster</span>
+          </div>
+          <div class="modal-stat">
+            <span class="stat-label">Next Color</span>
+            <span class="stat-value highlight" id="modal-stat-next-color">Black</span>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button id="modal-btn-play-next" class="btn btn-primary btn-large">
+            <span>Play Next Game (Switch Colors)</span>
+          </button>
+          <button id="modal-btn-close" class="btn btn-ghost">
+            <span>Review Board</span>
+          </button>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Settings Modal -->
-  <div class="modal-overlay" id="settings-modal" role="dialog" aria-modal="true">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h2 class="modal-title">Platform Settings</h2>
-        <button class="modal-close-btn" id="btn-close-settings" aria-label="Close">✕</button>
-      </div>
-
-      <div class="settings-group">
-        <label class="settings-label" for="setting-player-name">Player Display Name</label>
-        <input type="text" id="setting-player-name" class="glass-input" value="Grandmaster">
-      </div>
-
-      <div class="settings-group">
-        <label class="settings-label" for="setting-game-mode">Game Mode</label>
-        <select id="setting-game-mode" class="glass-select">
-          <option value="vs-computer">Player vs Computer</option>
-          <option value="local-2p" selected>Local Two-Player</option>
-          <option value="free-analysis">Free-Play Analysis</option>
-        </select>
-      </div>
-
-      <div class="settings-group">
-        <label class="settings-label" for="setting-ai-difficulty">Computer Strength</label>
-        <select id="setting-ai-difficulty" class="glass-select">
-          <option value="1">Level 1 — Casual (Depth 1)</option>
-          <option value="2">Level 2 — Intermediate (Depth 2)</option>
-          <option value="3" selected>Level 3 — Advanced (Depth 3 Alpha-Beta)</option>
-          <option value="4">Level 4 — Expert (Depth 4)</option>
-        </select>
-      </div>
-
-      <div class="settings-group">
-        <label class="settings-label" for="setting-time-control">Time Control Preset</label>
-        <select id="setting-time-control" class="glass-select">
-          <option value="none">Untimed (No Clocks)</option>
-          <option value="1|0">1 min (Bullet)</option>
-          <option value="3|0">3 min (Blitz)</option>
-          <option value="3|2">3 min + 2s (Blitz)</option>
-          <option value="5|0">5 min (Blitz)</option>
-          <option value="10|0" selected>10 min (Rapid)</option>
-          <option value="15|10">15 min + 10s (Rapid)</option>
-          <option value="30|0">30 min (Classical)</option>
-        </select>
-      </div>
-
-      <div class="settings-group">
-        <label class="settings-label" for="setting-board-theme">Board Theme</label>
-        <select id="setting-board-theme" class="glass-select">
-          <option value="cyber-neon" selected>Cyber Neon (Electric Cyan)</option>
-          <option value="cosmic-violet">Cosmic Violet (Nebula Purple)</option>
-          <option value="classic-walnut">Classic Walnut (Warm Wood)</option>
-          <option value="emerald-glass">Emerald Glass (Deep Forest)</option>
-        </select>
-      </div>
-
-      <div class="settings-toggle-row">
-        <span class="settings-label">Sound Effects</span>
-        <input type="checkbox" id="setting-sound-enabled" checked style="width: 18px; height: 18px; accent-color: var(--accent-cyan); cursor: pointer;">
-      </div>
-
-      <div class="settings-toggle-row">
-        <span class="settings-label">Legal Move Destination Markers</span>
-        <input type="checkbox" id="setting-show-markers" checked style="width: 18px; height: 18px; accent-color: var(--accent-cyan); cursor: pointer;">
-      </div>
-
-      <div style="display: flex; justify-content: flex-end; margin-top: 8px;">
-        <button class="btn btn-primary" id="btn-save-settings">Save & Close</button>
+    <!-- Confirm Modal (Resign or New Game) -->
+    <div class="modal-backdrop" id="confirm-modal" style="display: none;">
+      <div class="modal-card modal-confirm">
+        <h3 id="confirm-modal-title">Confirm Action</h3>
+        <p id="confirm-modal-message">A game is currently in progress. Are you sure you want to proceed?</p>
+        <div class="modal-actions">
+          <button id="confirm-btn-yes" class="btn btn-danger">Confirm</button>
+          <button id="confirm-btn-no" class="btn btn-secondary">Cancel</button>
+        </div>
       </div>
     </div>
+
+    <!-- Toast Notification Banner -->
+    <div class="toast-container" id="toast-container"></div>
   </div>
 
-  <!-- Toast Notification Container -->
-  <div class="toast-container" id="toast-container" aria-live="polite"></div>
-
-  <!-- Load Main Application Script -->
+  <!-- Scripts -->
+  <script src="lib/chess.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
-
