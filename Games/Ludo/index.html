@@ -2,92 +2,109 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
   <title>Ludo - Vanilla JS</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main class="app">
-    
-    <section class="game-area">
-      <div style="text-align:center; margin-bottom:10px;">
+    <header class="app-header">
+      <div class="header-title-wrap">
         <h1>🎲 Ludo</h1>
       </div>
-
-      <div class="board-wrap">
-        <div id="board" class="board" aria-label="Ludo board"></div>
-        <div id="tokens-layer" class="tokens-layer"></div>
-        <div class="dice-panel center-dice">
-          <div
-            id="dice"
-            class="dice"
-            role="button"
-            tabindex="0"
-            aria-label="Roll dice"
-            title="Click to roll"
-          ></div>
-        </div>
+      <div class="header-actions">
+        <button id="fullscreen-btn" class="icon-btn fullscreen-btn" type="button" aria-label="Enter Fullscreen" title="Enter Fullscreen">
+          <svg id="fs-enter-icon" class="fs-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+          </svg>
+          <svg id="fs-exit-icon" class="fs-icon hidden" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
+          </svg>
+        </button>
       </div>
-    </section>
+    </header>
 
-    <!-- UI Panel: Players | Action Buttons | Mode Switches -->
-    <section class="hud">
-      <div class="card scoreboard-card">
-        
-        <!-- Left side: Player count -->
-        <div class="controls left-controls" id="player-settings-panel">
-          <label class="control-drawer">
-            <span class="control-title">Players:</span>
-            <div class="drawer-select" data-target-select="player-count">
-              <button
-                type="button"
-                class="drawer-toggle"
-                aria-expanded="false"
-                aria-controls="player-count-drawer"
-              >
-                <span class="drawer-value">4</span>
-                <span class="drawer-chevron">▾</span>
-              </button>
-              <div id="player-count-drawer" class="drawer-menu" role="listbox">
-                <button type="button" class="drawer-option" data-value="2">2 Players</button>
-                <button type="button" class="drawer-option" data-value="3">3 Players</button>
-                <button type="button" class="drawer-option" data-value="4">4 Players</button>
-              </div>
-              <select id="player-count" class="native-select-hidden">
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4" selected>4</option>
-              </select>
+    <div class="main-layout">
+      <!-- Game Board Area -->
+      <section class="game-area">
+        <div class="board-wrap">
+          <div id="board" class="board" aria-label="Ludo board"></div>
+          <div id="tokens-layer" class="tokens-layer"></div>
+          <div class="dice-panel center-dice">
+            <div
+              id="dice"
+              class="dice"
+              role="button"
+              tabindex="0"
+              aria-label="Roll dice"
+              title="Click to roll"
+            ></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sidebar with Controls and Customizer -->
+      <aside class="game-sidebar">
+        <!-- UI Panel: Players | Action Buttons | Mode Switches -->
+        <section class="hud">
+          <div class="card scoreboard-card">
+            
+            <!-- Left side: Player count -->
+            <div class="controls left-controls" id="player-settings-panel">
+              <label class="control-drawer">
+                <span class="control-title">Players:</span>
+                <div class="drawer-select" data-target-select="player-count">
+                  <button
+                    type="button"
+                    class="drawer-toggle"
+                    aria-expanded="false"
+                    aria-controls="player-count-drawer"
+                  >
+                    <span class="drawer-value">4</span>
+                    <span class="drawer-chevron">▾</span>
+                  </button>
+                  <div id="player-count-drawer" class="drawer-menu" role="listbox">
+                    <button type="button" class="drawer-option" data-value="2">2 Players</button>
+                    <button type="button" class="drawer-option" data-value="3">3 Players</button>
+                    <button type="button" class="drawer-option" data-value="4">4 Players</button>
+                  </div>
+                  <select id="player-count" class="native-select-hidden">
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4" selected>4</option>
+                  </select>
+                </div>
+              </label>
             </div>
-          </label>
-        </div>
 
-        <!-- Center: Game Actions -->
-        <div class="game-action-center">
-          <button id="start-toggle">Start</button>
-          <button id="restart-game">Restart</button>
-        </div>
-        
-        <!-- Right side: Scoreboard/Robot toggles -->
-        <div class="scoreboard" id="scoreboard"></div>
+            <!-- Center: Game Actions -->
+            <div class="game-action-center">
+              <button id="start-toggle">Start</button>
+              <button id="restart-game">Restart</button>
+            </div>
+            
+            <!-- Right side: Scoreboard/Robot toggles -->
+            <div class="scoreboard" id="scoreboard"></div>
 
-      </div>
-    </section>
+          </div>
+        </section>
 
-    <!-- Color Customizer -->
-    <section class="card color-customizer" id="color-settings-panel">
-      <div class="customizer-header">
-        <span class="control-title">Customize Player Colors</span>
-        <button id="reset-colors" class="reset-btn">Reset</button>
-      </div>
-      
-      <div class="color-inputs">
-        <label class="color-label">Cage 1 <input type="text" id="color-red-text" placeholder="#ff0000 or red"></label>
-        <label class="color-label">Cage 2 <input type="text" id="color-green-text" placeholder="#00ff00 or green"></label>
-        <label class="color-label">Cage 3 <input type="text" id="color-yellow-text" placeholder="#ffff00 or yellow"></label>
-        <label class="color-label">Cage 4 <input type="text" id="color-blue-text" placeholder="#0000ff or blue"></label>
-      </div>
-    </section>
+        <!-- Color Customizer -->
+        <section class="card color-customizer" id="color-settings-panel">
+          <div class="customizer-header">
+            <span class="control-title">Customize Player Colors</span>
+            <button id="reset-colors" class="reset-btn">Reset</button>
+          </div>
+          
+          <div class="color-inputs">
+            <label class="color-label">Cage 1 <input type="text" id="color-red-text" placeholder="#ff0000 or red"></label>
+            <label class="color-label">Cage 2 <input type="text" id="color-green-text" placeholder="#00ff00 or green"></label>
+            <label class="color-label">Cage 3 <input type="text" id="color-yellow-text" placeholder="#ffff00 or yellow"></label>
+            <label class="color-label">Cage 4 <input type="text" id="color-blue-text" placeholder="#0000ff or blue"></label>
+          </div>
+        </section>
+      </aside>
+    </div>
   </main>
 
   <div id="winner-modal" class="winner-modal hidden" role="dialog" aria-modal="true">

@@ -6,11 +6,27 @@ A modern, responsive, full-featured Ludo board game built entirely from scratch 
 
 ## 📸 Overview
 
-This project brings the classic tabletop board game to the browser with rich animations, Web Audio sound effects, intelligent AI opponents, dynamic color customization, and responsive layout for mobile, tablet, and desktop screens.
+This project brings the classic tabletop board game to the browser with rich animations, procedural Web Audio sound effects, intelligent AI opponents, dynamic color customization, automatic fullscreen support, and a responsive layout tailored for every device—from smartphones to 4K widescreen monitors.
 
 ---
 
 ## ✨ Features
+
+### 📺 Automatic Fullscreen & Immersive Experience
+- **Auto Fullscreen on Visit**: Automatically attempts to enter fullscreen mode upon initial visit (`DOMContentLoaded` / `load`) and immediately triggers on the user's very first interaction (`click`, `touchstart`, `pointerdown`, or `keydown`) complying with browser gesture security policies.
+- **Dedicated Fullscreen Toggle**: Accessible header button with dynamic SVG icons to toggle in and out of fullscreen at any time.
+- **Cross-Browser Engine**: Full fallback compatibility with standard Fullscreen API, WebKit (`webkitRequestFullscreen`), Mozilla (`mozRequestFullScreen`), and Microsoft Edge/IE (`msRequestFullscreen`).
+- **Game Action Fullscreen Hook**: Starting, rolling the dice, restarting, or replaying seamlessly re-engages fullscreen mode.
+
+### 📱 Responsive for Every Device & Orientation
+- **Adaptive Layout System**:
+  - **Desktop & Widescreen Laptops (≥ 960px)**: 2-column side-by-side master layout with board on the left and control sidebar on the right, fitting cleanly within `100dvh` without page scrolling.
+  - **Tablets (641px – 959px)**: Fluid board scaling with dynamic 3-column scoreboard and responsive HUD cards.
+  - **Mobile Portrait (≤ 640px)**: Vertically stacked layout with centered touch-optimized controls and action buttons.
+  - **Small Mobile (≤ 380px)**: Edge-to-edge compact layout with 1-column color inputs and minified control chips.
+  - **Mobile Landscape (Height ≤ 560px & Landscape)**: Specialized 2-column side-by-side mode with fluid board scaling (`min(calc(100dvh - 2.8rem), 54vw)`) and custom slim scrollable sidebar.
+- **Safe Area Insets**: Full support for `env(safe-area-inset-*)` accommodating device notches, Dynamic Island, and system navigation bars.
+- **Dynamic Viewport Units**: Built with `100dvh`, `clamp()`, and `min()` ensuring zero unwanted viewport clipping or accidental overflow.
 
 ### 👥 Player Modes (2, 3, or 4 Players)
 - **4 Players**: Full classic 4-corner board (Red, Green, Yellow, Blue).
@@ -59,20 +75,15 @@ Zero external audio files—sound is procedurally synthesized using the browser'
 - <kbd>Esc</kbd>: Close open drawer dropdowns.
 - Clear pulse animations on all valid tokens awaiting player choice.
 
-### 📱 Responsive & Mobile-Optimized
-- Scaled using viewport units (`vmin`, `clamp()`) and CSS Grid.
-- Center-mounted 3D dice with animated pip faces and roll bounce.
-- Seamless touch/click interactions on mobile, tablet, and widescreen desktop monitors.
-
 ---
 
 ## 📁 Project Structure
 
 ```text
-├── index.html        # Semantic HTML5 board layout, HUD, scoreboard, and modals
-├── style.css         # Responsive styling, CSS Grid, animations, and color system
-├── script.js         # Core game engine, rules, AI logic, and Web Audio synthesizer
-└── README.md         # Project documentation and guide
+├── index.html        # Semantic HTML5 board layout, fullscreen header, HUD, and modals
+├── style.css         # Responsive styling, CSS Grid, animations, safe-area insets, and fullscreen rules
+├── script.js         # Core game engine, rules, AI logic, Web Audio synthesizer, and Fullscreen API
+└── README.md         # Comprehensive documentation and guide
 ```
 
 ---
@@ -103,6 +114,7 @@ Then visit `http://localhost:8080` in your browser.
 
 | Action | Control |
 |---|---|
+| **Toggle Fullscreen** | Click the fullscreen icon button in the top header |
 | **Roll Dice** | Click the center dice or press <kbd>Space</kbd> |
 | **Select Token** | Click on any pulsing token or press keys <kbd>1</kbd>–<kbd>4</kbd> |
 | **Toggle Human / AI** | Click any colored player chip in the scoreboard (before game starts) |
@@ -115,9 +127,9 @@ Then visit `http://localhost:8080` in your browser.
 
 ## 🛠️ Built With
 
-- **HTML5**: Semantic tags, accessible ARIA roles, and responsive markup.
-- **CSS3**: CSS Grid (15×15 board matrix), CSS variables, conic gradients, and keyframe animations.
-- **JavaScript (ES6+)**: Pure vanilla JS with modular state architecture, async/await animation loops, and Web Audio API synthesis.
+- **HTML5**: Semantic tags, accessible ARIA roles, viewport fit cover meta, and responsive markup.
+- **CSS3**: CSS Grid (15×15 board matrix), CSS variables, dynamic viewport units (`100dvh`), media queries, and keyframe animations.
+- **JavaScript (ES6+)**: Pure vanilla JS with modular state architecture, async/await animation loops, Fullscreen API, and Web Audio API synthesis.
 
 ---
 

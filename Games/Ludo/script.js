@@ -394,6 +394,7 @@ function resumeGameFlowIfNeeded() {
 }
 
 function toggleStartPause() {
+  requestFullscreenSafe();
   if (state.gameOver) return;
 
   if (!state.gameStarted) {
@@ -1100,6 +1101,9 @@ function advanceTurn() {
 }
 
 async function rollDice(trigger = "human") {
+  if (trigger === "human") {
+    requestFullscreenSafe();
+  }
   if (!state.gameStarted || state.paused) return;
   if (trigger !== "robot" && isRobotTurn()) return;
   if (state.rolling || state.awaitingTokenChoice || state.gameOver) return;
@@ -1337,6 +1341,82 @@ function setupColorCustomizer() {
 }
 
 
+// ---------- Fullscreen API ----------
+function isCurrentlyFullscreen() {
+  return Boolean(
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    document.mozFullScreenElement ||
+    document.msFullscreenElement
+  );
+}
+
+function requestFullscreenSafe() {
+  try {
+    if (!isCurrentlyFullscreen()) {
+      const docEl = document.documentElement;
+      const req =
+        docEl.requestFullscreen ||
+        docEl.webkitRequestFullscreen ||
+        docEl.mozRequestFullScreen ||
+        docEl.msRequestFullscreen;
+      if (req) {
+        const res = req.call(docEl);
+        if (res && res.catch) {
+          res.catch(() => {});
+        }
+      }
+    }
+  } catch (e) {
+    // Ignore restricted permission error in unprivileged contexts
+  }
+}
+
+function exitFullscreenSafe() {
+  try {
+    if (isCurrentlyFullscreen()) {
+      const exit =
+        document.exitFullscreen ||
+        document.webkitExitFullscreen ||
+        document.mozCancelFullScreen ||
+        document.msExitFullscreen;
+      if (exit) {
+        const res = exit.call(document);
+        if (res && res.catch) {
+          res.catch(() => {});
+        }
+      }
+    }
+  } catch (e) {
+    // Ignore error
+  }
+}
+
+function toggleFullscreen() {
+  if (isCurrentlyFullscreen()) {
+    exitFullscreenSafe();
+  } else {
+    requestFullscreenSafe();
+  }
+}
+
+function updateFullscreenUI() {
+  const isFs = isCurrentlyFullscreen();
+  const fsEnterIcon = document.getElementById("fs-enter-icon");
+  const fsExitIcon = document.getElementById("fs-exit-icon");
+  const fullscreenBtn = document.getElementById("fullscreen-btn");
+
+  if (fsEnterIcon && fsExitIcon) {
+    fsEnterIcon.classList.toggle("hidden", isFs);
+    fsExitIcon.classList.toggle("hidden", !isFs);
+  }
+  if (fullscreenBtn) {
+    fullscreenBtn.setAttribute("aria-label", isFs ? "Exit Fullscreen" : "Enter Fullscreen");
+    fullscreenBtn.title = isFs ? "Exit Fullscreen" : "Enter Fullscreen";
+  }
+  setTimeout(() => renderTokens(), 100);
+}
+
 // ---------- Events ----------
 function setupEvents() {
   diceEl.addEventListener("click", rollDice);
@@ -1388,6 +1468,7 @@ function setupEvents() {
   });
 
   restartGameEl.addEventListener("click", () => {
+    requestFullscreenSafe();
     state.playerCount = Number(playerCountEl.value);
     initGame(state.playerCount, false);
   });
@@ -1409,6 +1490,7 @@ function setupEvents() {
   });
 
   playAgainEl.addEventListener("click", () => {
+    requestFullscreenSafe();
     winnerModalEl.classList.add("hidden");
     initGame(state.playerCount, false);
   });
@@ -1418,14 +1500,40 @@ function setupEvents() {
   // Init customizers
   setupColorCustomizer();
 
-  // Unlock audio context after first user gesture
-  ["click", "keydown"].forEach((evt) => {
+  // Fullscreen button
+  const fullscreenBtn = document.getElementById("fullscreen-btn");
+  if (fullscreenBtn) {
+    fullscreenBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleFullscreen();
+    });
+  }
+
+  // Fullscreen change events
+  ["fullscreenchange", "webkitfullscreenchange", "mozfullscreenchange", "MSFullscreenChange"].forEach((evt) => {
+    document.addEventListener(evt, updateFullscreenUI);
+  });
+
+  // Attempt automatic fullscreen upon visiting
+  requestFullscreenSafe();
+  window.addEventListener("DOMContentLoaded", requestFullscreenSafe);
+  window.addEventListener("load", requestFullscreenSafe);
+
+  // Orientation change resize
+  window.addEventListener("orientationchange", () => {
+    setTimeout(() => renderTokens(), 150);
+  });
+
+  // Unlock audio context and trigger fullscreen on user gesture
+  ["click", "touchstart", "pointerdown", "keydown"].forEach((evt) => {
     window.addEventListener(
       evt,
       () => {
         ensureAudio();
         if (audioCtx && audioCtx.state === "suspended") {
           audioCtx.resume();
+        }
+        requestFullscreenSafe(); { /* user interaction hook */
         }
       },
       { once: true }
