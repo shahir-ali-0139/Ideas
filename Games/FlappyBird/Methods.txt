@@ -1,0 +1,249 @@
+Project: Fully Functional Flappy Bird Game
+
+Act as an expert frontend game developer. Build a complete, polished, fully playable Flappy Bird-inspired game using ONLY HTML, CSS, and vanilla JavaScript.
+
+The game must run directly in a web browser without any frameworks, libraries, external game engines, backend, or build tools.
+
+1. Technology Requirements
+HTML5 for game structure.
+CSS3 for styling, animations, and responsive layouts.
+Vanilla JavaScript (ES6+) for all game logic.
+HTML5 Canvas API for rendering the game.
+Browser cookies for saving and retrieving the player's highest score.
+No React, Vue, Angular, jQuery, TypeScript, or external dependencies.
+2. Game Mechanics
+
+Implement all standard Flappy Bird gameplay functionality:
+
+A bird that continuously falls because of gravity.
+Pressing SPACE, clicking the mouse, or tapping the screen makes the bird jump upward.
+Smooth bird movement and realistic gravity.
+Randomly generated pairs of upper and lower pipes.
+Pipes must have randomly generated gap positions.
+The bird must pass through the gap between pipes to survive.
+Pipes continuously move from right to left.
+New pipes should spawn automatically.
+Increase the score whenever the bird successfully passes a pipe.
+Detect collisions with pipes, the ground, and the ceiling.
+End the game immediately when a collision occurs.
+Implement a smooth game-over sequence.
+3. Game Screens and Interface
+Start Screen
+
+Display:
+
+Game title: FLAPPY BIRD.
+Animated bird preview.
+Play button.
+Instructions: "Press SPACE, Click or Tap to Fly".
+Previously saved highest score.
+Gameplay Screen
+
+Display:
+
+Current score at the top center.
+Best score.
+Animated bird.
+Moving pipes.
+Scrolling ground.
+Background with clouds.
+Smooth game animations.
+Game Over Screen
+
+Display:
+
+GAME OVER title.
+Final score.
+Best score.
+Restart button.
+Option to return to the start screen.
+Visual indication if the player achieved a new high score.
+4. High Score Using Browser Cookies
+
+Implement persistent high-score functionality using browser cookies.
+
+Requirements:
+
+Store the highest score in a cookie named flappyBirdHighScore.
+Set a suitable cookie expiration period, such as 365 days.
+Retrieve the cookie when the game loads.
+Display the saved high score on the start screen and gameplay screen.
+Update the cookie only when the current score exceeds the existing high score.
+Ensure the saved score remains available after refreshing or reopening the browser.
+Handle missing, invalid, or expired cookies gracefully.
+Implement reusable JavaScript functions:
+getHighScore()
+saveHighScore(score)
+updateHighScore(score)
+
+Example cookie implementation:
+
+javascript
+function saveHighScore(score) {
+    document.cookie =
+        `flappyBirdHighScore=${score}; max-age=31536000; path=/; SameSite=Lax`;
+}
+
+function getHighScore() {
+    const match = document.cookie.match(
+        /(?:^|; )flappyBirdHighScore=(\d+)/
+    );
+    return match ? parseInt(match[1], 10) : 0;
+}
+
+5. Visual Design and Animations
+
+Create an attractive, modern arcade-style design.
+
+Bright sky-blue background.
+Animated clouds moving across the screen.
+Green pipes with darker outlines and dimensional shading.
+Yellow bird with animated wings.
+Green scrolling ground.
+Smooth transitions between game states.
+Score displayed in a bold arcade-style font.
+Attractive start and game-over overlays.
+Add subtle shadows and polished visual effects.
+
+Use CSS and Canvas drawing to create game graphics. Do not depend on external image assets.
+
+6. Sound Effects
+
+Implement game sound effects using the Web Audio API (no external audio files required).
+
+Include:
+
+Wing flap sound when jumping.
+Point sound when scoring.
+Collision sound when the game ends.
+Optional background music with mute/unmute controls.
+
+Make sure sound starts only after user interaction to comply with browser autoplay restrictions.
+
+7. Difficulty Progression
+
+Implement progressive difficulty:
+
+Start with a comfortable pipe gap and movement speed.
+Gradually increase pipe speed as the player's score increases.
+Gradually reduce the pipe gap within reasonable limits.
+Maintain fair and playable difficulty.
+Prevent impossible pipe configurations.
+8. Controls and User Experience
+
+Support all of the following:
+
+SPACE key: Flap.
+UP ARROW: Flap.
+Mouse click: Flap.
+Touchscreen tap: Flap.
+Play button: Start game.
+Restart button: Restart immediately.
+P key: Pause/resume.
+M key: Toggle sound.
+Pause button: Pause/resume.
+Sound button: Mute/unmute.
+
+Prevent page scrolling when SPACE is used during gameplay.
+
+Ensure touch controls work smoothly on mobile devices without accidental browser gestures.
+
+9. Game States
+
+Implement a clean game-state management system with these states:
+
+READY
+PLAYING
+PAUSED
+GAME_OVER
+
+Handle all transitions correctly.
+
+Prevent multiple animation loops from starting when restarting the game.
+
+Use requestAnimationFrame() for smooth rendering and delta-time-based movement so gameplay remains consistent across different refresh rates.
+
+10. Responsive Design
+
+The game must work properly on:
+
+Desktop computers.
+Laptops.
+Tablets.
+Android phones.
+iPhones.
+
+Requirements:
+
+Responsive canvas dimensions.
+Maintain game aspect ratio.
+Adapt UI elements to screen sizes.
+Support portrait mobile gameplay.
+Prevent unwanted scrolling and text selection.
+Ensure buttons are easy to tap on mobile.
+11. Code Architecture
+
+Organize the project into exactly these three files:
+
+index.html
+style.css
+script.js
+
+Keep the code clean, readable, modular, and properly commented.
+
+Use reusable functions and logical separation for:
+
+Game initialization.
+Bird physics.
+Pipe generation.
+Collision detection.
+Score management.
+Cookie management.
+Sound effects.
+Rendering.
+Input handling.
+Game-state transitions.
+12. Additional Features
+
+Include these extra features to make the game more polished:
+
+Smooth bird rotation depending on vertical velocity.
+Wing-flapping animation.
+Floating start-screen animation.
+Pause overlay.
+Best-score celebration.
+Game-over screen animation.
+Restart without reloading the webpage.
+Optional fullscreen button.
+Proper handling of browser window resizing.
+A small visual countdown or ready indicator before gameplay starts.
+13. Performance and Bug Prevention
+
+Ensure:
+
+No memory leaks.
+No duplicate event listeners.
+No duplicate animation loops.
+Accurate collision detection.
+Consistent physics at different frame rates.
+Proper cleanup and resetting when restarting.
+No console errors.
+No broken buttons.
+No missing game functionality.
+14. Final Deliverables
+
+Generate all three complete files:
+
+index.html
+style.css
+script.js
+
+Do not provide pseudocode or incomplete snippets.
+
+All buttons, controls, animations, game mechanics, sounds, and cookie-based high-score functionality must actually work.
+
+The game should be playable immediately after opening index.html in a modern browser.
+
+IMPORTANT: Build the entire game, not just a visual mockup. Test the gameplay, collision detection, scoring, restarting, pause/resume, mobile controls, and cookie persistence. Fix any bugs before considering the project complete.
+
+The final result should feel like a polished, complete arcade game rather than a basic coding demo.

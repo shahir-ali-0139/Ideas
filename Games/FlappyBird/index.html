@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#4ec0ca">
+  <meta name="description" content="A polished, fully playable Flappy Bird arcade game built with vanilla HTML5 Canvas, CSS3, and JavaScript.">
+  <title>Flappy Bird - Retro Arcade Game</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Main Game Wrapper -->
+  <main id="game-wrapper" class="game-wrapper">
+    <div id="game-container" class="game-container">
+      
+      <!-- HTML5 Canvas for high-performance 60FPS rendering -->
+      <canvas id="game-canvas" width="400" height="640" aria-label="Flappy Bird Game Canvas"></canvas>
+
+      <!-- Heads-Up Display (HUD) during gameplay -->
+      <header id="hud" class="hud" aria-label="Game HUD">
+        <div class="hud-left">
+          <div class="hud-score-display">
+            <span class="hud-label">SCORE</span>
+            <span id="current-score" class="hud-value">0</span>
+          </div>
+          <div class="hud-best-display">
+            <span class="hud-label">BEST</span>
+            <span id="hud-best-score" class="hud-value">0</span>
+          </div>
+        </div>
+
+        <div class="hud-controls">
+          <button id="sound-btn" class="icon-btn" title="Toggle Sound (M)" aria-label="Toggle Sound">
+            <svg id="sound-on-icon" class="icon" viewBox="0 0 24 24">
+              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+            </svg>
+            <svg id="sound-off-icon" class="icon hidden" viewBox="0 0 24 24">
+              <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27l4.73 4.73H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+            </svg>
+          </button>
+          
+          <button id="music-btn" class="icon-btn" title="Toggle Music" aria-label="Toggle Background Music">
+            <svg id="music-on-icon" class="icon" viewBox="0 0 24 24">
+              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+            </svg>
+            <svg id="music-off-icon" class="icon hidden" viewBox="0 0 24 24">
+              <path d="M4.27 3L3 4.27l4.73 4.73H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+            </svg>
+          </button>
+
+          <button id="pause-btn" class="icon-btn" title="Pause Game (P)" aria-label="Pause Game">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+            </svg>
+          </button>
+
+          <button id="fullscreen-btn" class="icon-btn" title="Toggle Fullscreen" aria-label="Toggle Fullscreen">
+            <svg id="fullscreen-enter-icon" class="icon" viewBox="0 0 24 24">
+              <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+            </svg>
+            <svg id="fullscreen-exit-icon" class="icon hidden" viewBox="0 0 24 24">
+              <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Flash overlay for impact / game over -->
+      <div id="flash-effect" class="flash-overlay"></div>
+
+      <!-- Screen: START SCREEN -->
+      <section id="start-screen" class="overlay-screen active" aria-labelledby="game-title">
+        <div class="screen-content start-content">
+          <div class="title-container">
+            <h1 id="game-title" class="arcade-title">FLAPPY<span class="title-accent">BIRD</span></h1>
+            <p class="subtitle">ARCADE EDITION</p>
+          </div>
+
+          <!-- Animated Bird Mascot Canvas -->
+          <div class="mascot-wrapper">
+            <canvas id="mascot-canvas" width="80" height="70" aria-hidden="true"></canvas>
+          </div>
+
+          <!-- High Score Preview Card -->
+          <div class="high-score-card">
+            <div class="trophy-badge">🏆</div>
+            <div class="score-info">
+              <span class="card-label">ALL-TIME BEST</span>
+              <span id="start-high-score" class="card-value">0</span>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="button-group">
+            <button id="start-btn" class="arcade-btn btn-primary">
+              <span class="btn-text">PLAY GAME</span>
+              <span class="btn-shine"></span>
+            </button>
+          </div>
+
+          <!-- Controls Instructions -->
+          <div class="instructions-panel">
+            <div class="instruction-row">
+              <span class="key-badge">SPACE</span>
+              <span class="instruction-sep">/</span>
+              <span class="key-badge">TAP</span>
+              <span class="instruction-sep">/</span>
+              <span class="key-badge">CLICK</span>
+              <span class="instruction-action">to Flap & Fly</span>
+            </div>
+            <div class="instruction-sub">
+              <span>Press <b>P</b> to pause &bull; <b>M</b> for sound</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Screen: READY / GET READY COUNTDOWN -->
+      <section id="ready-screen" class="overlay-screen" aria-live="polite">
+        <div class="screen-content ready-content">
+          <div class="ready-banner">
+            <h2 class="ready-title">GET READY!</h2>
+          </div>
+          <div class="tap-hint">
+            <div class="finger-tap-icon">👆</div>
+            <p class="tap-text">Tap or Press SPACE to Flap</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Screen: PAUSE OVERLAY -->
+      <section id="pause-screen" class="overlay-screen" aria-labelledby="pause-title">
+        <div class="screen-content pause-content">
+          <h2 id="pause-title" class="arcade-title-secondary">PAUSED</h2>
+          <div class="pause-card">
+            <p class="pause-status">Game is currently paused</p>
+            <div class="button-group vertical">
+              <button id="resume-btn" class="arcade-btn btn-primary">
+                <span class="btn-text">RESUME</span>
+              </button>
+              <button id="pause-restart-btn" class="arcade-btn btn-secondary">
+                <span class="btn-text">RESTART</span>
+              </button>
+              <button id="pause-home-btn" class="arcade-btn btn-tertiary">
+                <span class="btn-text">MAIN MENU</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Screen: GAME OVER -->
+      <section id="game-over-screen" class="overlay-screen" aria-labelledby="game-over-title">
+        <div class="screen-content game-over-content">
+          
+          <div class="game-over-banner">
+            <h2 id="game-over-title" class="arcade-title-danger">GAME OVER</h2>
+          </div>
+
+          <!-- Score Card Modal -->
+          <div class="score-board-card">
+            <div id="new-best-badge" class="new-best-badge hidden">
+              <span>★ NEW BEST! ★</span>
+            </div>
+
+            <div class="score-board-grid">
+              <!-- Medal Badge based on score -->
+              <div class="medal-section">
+                <div class="medal-label">MEDAL</div>
+                <div id="medal-display" class="medal-badge">
+                  <span id="medal-icon" class="medal-icon">🥉</span>
+                  <span id="medal-tier" class="medal-tier">Bronze</span>
+                </div>
+              </div>
+
+              <!-- Score Numbers -->
+              <div class="score-details">
+                <div class="score-row">
+                  <span class="score-label">SCORE</span>
+                  <span id="final-score" class="score-number">0</span>
+                </div>
+                <div class="score-divider"></div>
+                <div class="score-row">
+                  <span class="score-label">BEST</span>
+                  <span id="game-over-best-score" class="score-number">0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Buttons Group -->
+          <div class="button-group">
+            <button id="restart-btn" class="arcade-btn btn-primary">
+              <span class="btn-text">PLAY AGAIN</span>
+              <span class="btn-shine"></span>
+            </button>
+            <button id="home-btn" class="arcade-btn btn-secondary">
+              <span class="btn-text">MENU</span>
+            </button>
+          </div>
+
+          <div class="quick-tip">
+            <span>Tip: Press <b>SPACE</b> or <b>R</b> to quickly restart</span>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Core JavaScript -->
+  <script src="script.js"></script>
+</body>
+</html>
+
