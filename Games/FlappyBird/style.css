@@ -1,6 +1,6 @@
 /* ==========================================================================
    FLAPPY BIRD - ARCADE EDITION
-   Style Sheet: Responsive Layout, Retro Arcade Aesthetic, & Micro-animations
+   Style Sheet: Mobile-First Responsive, High-DPI, & Cross-Platform UI
    ========================================================================== */
 
 :root {
@@ -21,15 +21,13 @@
   --text-dark: #2d3436;
   --border-dark: #1e272e;
   
-  --cabinet-bg: #12161a;
+  --cabinet-bg: #0d1117;
   --cabinet-border: #222f3e;
   
-  --canvas-width: 400px;
-  --canvas-height: 640px;
   --font-family: 'Impact', 'Arial Black', 'Trebuchet MS', system-ui, -apple-system, sans-serif;
 }
 
-/* Base Reset & Prevent Unwanted Mobile Gestures */
+/* Base Reset & Prevent Mobile Browser Gestures (Pull-to-refresh, Zoom, Tap Highlighting) */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -37,18 +35,23 @@
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 html, body {
   width: 100%;
   height: 100%;
+  height: 100vh;
   height: 100dvh;
   overflow: hidden;
+  position: fixed;
+  inset: 0;
+  overscroll-behavior: none;
   background-color: var(--cabinet-bg);
   background-image: 
-    radial-gradient(circle at 50% 30%, #1e293b 0%, #0f172a 70%),
+    radial-gradient(circle at 50% 30%, #1a2332 0%, #0d1117 75%),
     radial-gradient(#2d3748 1px, transparent 1px);
-  background-size: 100% 100%, 20px 20px;
+  background-size: 100% 100%, 24px 24px;
   font-family: var(--font-family);
   color: var(--text-light);
   display: flex;
@@ -56,33 +59,39 @@ html, body {
   justify-content: center;
 }
 
-/* Game Outer Wrapper */
+/* Game Outer Wrapper - Centers cabinet on desktop, fills screen on mobile */
 .game-wrapper {
   position: relative;
   width: 100%;
   height: 100%;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px;
+  padding: 16px;
 }
 
-/* Arcade Cabinet Frame Container */
+/* ==========================================================================
+   ARCADE CABINET CONTAINER (Responsive for Desktop & Mobile)
+   ========================================================================== */
 .game-container {
   position: relative;
-  width: var(--canvas-width);
-  height: var(--canvas-height);
-  max-width: 100%;
-  max-height: 100dvh;
+  width: 100%;
+  max-width: min(440px, 94vw);
+  height: 100%;
+  max-height: min(720px, 92dvh);
   aspect-ratio: 400 / 640;
   background: var(--sky-top);
-  border-radius: 16px;
+  border-radius: 20px;
   box-shadow: 
-    0 10px 40px rgba(0, 0, 0, 0.6),
+    0 16px 50px rgba(0, 0, 0, 0.75),
     0 0 0 4px var(--cabinet-border),
-    0 0 25px rgba(78, 192, 202, 0.25);
+    0 0 30px rgba(78, 192, 202, 0.3);
   overflow: hidden;
   touch-action: none;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Shake Animation on Collision */
@@ -97,22 +106,23 @@ html, body {
   40%, 60% { transform: translate3d(5px, -1px, 0); }
 }
 
-/* Canvas Styling */
+/* Canvas Styling - Dynamically scaled without stretching */
 #game-canvas {
   display: block;
   width: 100%;
   height: 100%;
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
   cursor: pointer;
+  touch-action: none;
 }
 
-/* Heads-Up Display (HUD) */
+/* ==========================================================================
+   HEADS-UP DISPLAY (HUD)
+   ========================================================================== */
 .hud {
   position: absolute;
-  top: 14px;
-  left: 14px;
-  right: 14px;
+  top: max(12px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -122,30 +132,30 @@ html, body {
 
 .hud-left {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .hud-score-display, .hud-best-display {
   display: flex;
   flex-direction: column;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border: 2px solid rgba(255, 255, 255, 0.3);
-  padding: 4px 12px;
+  padding: 4px 10px;
   border-radius: 10px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 .hud-label {
-  font-size: 10px;
+  font-size: clamp(9px, 2vw, 11px);
   letter-spacing: 1px;
   color: #ffd32a;
   text-shadow: 1px 1px 0 #000;
 }
 
 .hud-value {
-  font-size: 26px;
+  font-size: clamp(20px, 4.5vw, 28px);
   line-height: 1.1;
   font-weight: 900;
   color: #ffffff;
@@ -154,28 +164,29 @@ html, body {
 
 .hud-controls {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   pointer-events: auto;
 }
 
-/* Icon Buttons (Sound, Pause, Fullscreen) */
+/* Icon Buttons (Touch targets >= 44px on mobile) */
 .icon-btn {
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.55);
   border: 2px solid rgba(255, 255, 255, 0.4);
   color: #ffffff;
-  width: 38px;
-  height: 38px;
+  width: clamp(38px, 9vw, 44px);
+  height: clamp(38px, 9vw, 44px);
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+  transition: all 0.12s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  touch-action: manipulation;
 }
 
 .icon-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
   transform: translateY(-2px);
   border-color: #ffd32a;
 }
@@ -185,8 +196,8 @@ html, body {
 }
 
 .icon {
-  width: 20px;
-  height: 20px;
+  width: clamp(18px, 4.5vw, 22px);
+  height: clamp(18px, 4.5vw, 22px);
   fill: currentColor;
 }
 
@@ -213,7 +224,9 @@ html, body {
   100% { opacity: 0; }
 }
 
-/* Fullscreen Overlay Screens (Start, Ready, Pause, Game Over) */
+/* ==========================================================================
+   OVERLAY SCREENS (Start, Ready, Pause, Game Over)
+   ========================================================================== */
 .overlay-screen {
   position: absolute;
   inset: 0;
@@ -221,14 +234,15 @@ html, body {
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   opacity: 0;
   visibility: hidden;
   transform: scale(0.96);
-  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+  transition: opacity 0.22s ease, transform 0.22s ease, visibility 0.22s;
   z-index: 30;
-  padding: 20px;
+  padding: clamp(14px, 4vh, 28px) clamp(12px, 4vw, 24px);
+  padding-bottom: max(clamp(14px, 4vh, 28px), env(safe-area-inset-bottom));
 }
 
 .overlay-screen.active {
@@ -245,11 +259,16 @@ html, body {
   text-align: center;
 }
 
-/* Arcade Titles */
+/* Titles with Responsive Scaling */
+.title-container {
+  margin-bottom: clamp(6px, 1.5vh, 14px);
+}
+
 .arcade-title {
-  font-size: 42px;
+  font-size: clamp(32px, 8vw, 46px);
   font-weight: 900;
   letter-spacing: 2px;
+  line-height: 1.1;
   color: #fbc02d;
   text-shadow: 
     3px 3px 0 #d35400,
@@ -257,7 +276,7 @@ html, body {
     2px -2px 0 #000,
     -2px 2px 0 #000,
     2px 2px 0 #000,
-    0 6px 12px rgba(0, 0, 0, 0.4);
+    0 6px 14px rgba(0, 0, 0, 0.5);
   animation: floatTitle 2.5s ease-in-out infinite;
 }
 
@@ -272,20 +291,20 @@ html, body {
 }
 
 .subtitle {
-  font-size: 13px;
-  letter-spacing: 4px;
+  font-size: clamp(10px, 2.5vw, 13px);
+  letter-spacing: clamp(2px, 0.8vw, 4px);
   color: #ffd32a;
-  margin-top: -4px;
+  margin-top: -2px;
   text-shadow: 1px 1px 0 #000;
 }
 
 @keyframes floatTitle {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+  50% { transform: translateY(-7px); }
 }
 
 .arcade-title-secondary {
-  font-size: 38px;
+  font-size: clamp(28px, 7vw, 40px);
   letter-spacing: 3px;
   color: #fed330;
   text-shadow: 
@@ -294,12 +313,12 @@ html, body {
     2px -2px 0 #000,
     -2px 2px 0 #000,
     2px 2px 0 #000;
-  margin-bottom: 16px;
+  margin-bottom: clamp(10px, 2vh, 16px);
 }
 
 .arcade-title-danger {
-  font-size: 42px;
-  letter-spacing: 3px;
+  font-size: clamp(34px, 8vw, 46px);
+  letter-spacing: 2px;
   color: #eb3b5a;
   text-shadow: 
     3px 3px 0 #8b182b,
@@ -320,66 +339,69 @@ html, body {
 
 /* Mascot Bird Animation Wrapper */
 .mascot-wrapper {
-  margin: 18px 0;
+  margin: clamp(8px, 1.8vh, 18px) 0;
   animation: birdBob 2s ease-in-out infinite;
 }
 
 @keyframes birdBob {
   0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-12px) rotate(4deg); }
+  50% { transform: translateY(-10px) rotate(4deg); }
 }
 
-/* High Score Cards & Info Panels */
+/* High Score Card */
 .high-score-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: rgba(0, 0, 0, 0.55);
+  gap: clamp(8px, 2.5vw, 14px);
+  background: rgba(0, 0, 0, 0.6);
   border: 2px solid #ffd32a;
-  padding: 8px 18px;
+  padding: clamp(6px, 1.5vh, 10px) clamp(12px, 3.5vw, 20px);
   border-radius: 12px;
-  margin-bottom: 24px;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+  margin-bottom: clamp(14px, 2.8vh, 24px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
 
 .trophy-badge {
-  font-size: 26px;
+  font-size: clamp(22px, 5.5vw, 28px);
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
 }
 
 .card-label {
   display: block;
-  font-size: 10px;
+  font-size: clamp(9px, 2vw, 11px);
   letter-spacing: 1.5px;
   color: #ffd32a;
 }
 
 .card-value {
-  font-size: 24px;
+  font-size: clamp(20px, 5vw, 26px);
   font-weight: 900;
   color: #ffffff;
   text-shadow: 1px 1px 0 #000;
 }
 
-/* 3D Chunky Arcade Buttons */
+/* ==========================================================================
+   BUTTONS (Touch-friendly & tactile)
+   ========================================================================== */
 .button-group {
   display: flex;
-  gap: 14px;
+  gap: clamp(8px, 2.5vw, 14px);
   width: 100%;
-  max-width: 280px;
+  max-width: min(300px, 88vw);
 }
 
 .button-group.vertical {
   flex-direction: column;
-  gap: 10px;
+  gap: clamp(8px, 1.5vh, 12px);
 }
 
 .arcade-btn {
   position: relative;
   flex: 1;
-  padding: 14px 20px;
+  min-height: 48px; /* Meets Apple & Android touch target standards */
+  padding: clamp(10px, 2vh, 14px) clamp(14px, 3.5vw, 22px);
   font-family: var(--font-family);
-  font-size: 18px;
+  font-size: clamp(15px, 3.8vw, 19px);
   font-weight: 900;
   letter-spacing: 1.5px;
   color: #ffffff;
@@ -390,49 +412,50 @@ html, body {
   overflow: hidden;
   transition: transform 0.08s ease, box-shadow 0.08s ease;
   text-shadow: 1px 1px 0 #000;
+  touch-action: manipulation;
 }
 
 .btn-primary {
   background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%);
-  box-shadow: 0 6px 0 #1e8449, 0 8px 15px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 5px 0 #1e8449, 0 8px 15px rgba(0, 0, 0, 0.35);
 }
 
 .btn-primary:hover {
   background: linear-gradient(180deg, #37dd7d 0%, #2ecc71 100%);
-  box-shadow: 0 6px 0 #1e8449, 0 10px 18px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 5px 0 #1e8449, 0 10px 18px rgba(0, 0, 0, 0.4);
 }
 
 .btn-primary:active {
-  transform: translateY(4px);
+  transform: translateY(3px);
   box-shadow: 0 2px 0 #1e8449, 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
 .btn-secondary {
   background: linear-gradient(180deg, #f39c12 0%, #d35400 100%);
-  box-shadow: 0 6px 0 #a04000, 0 8px 15px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 5px 0 #a04000, 0 8px 15px rgba(0, 0, 0, 0.35);
 }
 
 .btn-secondary:hover {
   background: linear-gradient(180deg, #f5a623 0%, #e67e22 100%);
-  box-shadow: 0 6px 0 #a04000, 0 10px 18px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 5px 0 #a04000, 0 10px 18px rgba(0, 0, 0, 0.4);
 }
 
 .btn-secondary:active {
-  transform: translateY(4px);
+  transform: translateY(3px);
   box-shadow: 0 2px 0 #a04000, 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
 .btn-tertiary {
   background: linear-gradient(180deg, #34495e 0%, #2c3e50 100%);
-  box-shadow: 0 6px 0 #1a252f, 0 8px 15px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 5px 0 #1a252f, 0 8px 15px rgba(0, 0, 0, 0.35);
 }
 
 .btn-tertiary:active {
-  transform: translateY(4px);
+  transform: translateY(3px);
   box-shadow: 0 2px 0 #1a252f;
 }
 
-/* Button Shine Effect */
+/* Button Shine */
 .btn-shine {
   position: absolute;
   top: 0;
@@ -451,28 +474,30 @@ html, body {
 
 /* Instructions Panel */
 .instructions-panel {
-  margin-top: 24px;
-  background: rgba(0, 0, 0, 0.4);
-  padding: 10px 16px;
+  margin-top: clamp(12px, 2.5vh, 22px);
+  background: rgba(0, 0, 0, 0.45);
+  padding: clamp(8px, 1.8vh, 12px) clamp(10px, 3vw, 16px);
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  max-width: min(320px, 90vw);
 }
 
 .instruction-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  font-size: 13px;
-  margin-bottom: 6px;
+  flex-wrap: wrap;
+  gap: 5px;
+  font-size: clamp(11px, 2.8vw, 13px);
+  margin-bottom: 5px;
 }
 
 .key-badge {
   background: #ffffff;
   color: #111111;
-  padding: 3px 7px;
+  padding: 3px 6px;
   border-radius: 5px;
-  font-size: 11px;
+  font-size: clamp(9px, 2.2vw, 11px);
   font-weight: 900;
   box-shadow: 0 2px 0 #95a5a6;
 }
@@ -487,7 +512,7 @@ html, body {
 }
 
 .instruction-sub {
-  font-size: 11px;
+  font-size: clamp(10px, 2.4vw, 12px);
   color: #bdc3c7;
 }
 
@@ -495,13 +520,15 @@ html, body {
   color: #ffd32a;
 }
 
-/* Ready Screen */
+/* ==========================================================================
+   READY / GET READY SCREEN
+   ========================================================================== */
 .ready-content {
-  gap: 30px;
+  gap: clamp(18px, 4vh, 32px);
 }
 
 .ready-title {
-  font-size: 38px;
+  font-size: clamp(30px, 7.5vw, 40px);
   color: #f1c40f;
   text-shadow: 
     3px 3px 0 #b7950b,
@@ -521,68 +548,71 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: clamp(8px, 1.8vh, 12px);
 }
 
 .finger-tap-icon {
-  font-size: 44px;
+  font-size: clamp(36px, 9vw, 46px);
   animation: tapMotion 1s ease-in-out infinite;
 }
 
 @keyframes tapMotion {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-14px); }
+  50% { transform: translateY(-12px); }
 }
 
 .tap-text {
-  font-size: 16px;
+  font-size: clamp(14px, 3.5vw, 17px);
   color: #ffffff;
   text-shadow: 1px 1px 2px #000;
 }
 
-/* Pause Screen */
+/* ==========================================================================
+   PAUSE SCREEN
+   ========================================================================== */
 .pause-card {
-  background: rgba(0, 0, 0, 0.65);
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid rgba(255, 255, 255, 0.25);
   border-radius: 14px;
-  padding: 20px;
+  padding: clamp(14px, 3vh, 22px);
   width: 100%;
-  max-width: 280px;
+  max-width: min(290px, 86vw);
 }
 
 .pause-status {
-  font-size: 13px;
+  font-size: clamp(11px, 2.8vw, 13px);
   color: #bdc3c7;
-  margin-bottom: 16px;
+  margin-bottom: clamp(12px, 2vh, 16px);
 }
 
-/* Game Over Score Board Card */
+/* ==========================================================================
+   GAME OVER SCREEN & SCORE BOARD
+   ========================================================================== */
 .score-board-card {
   position: relative;
   width: 100%;
-  max-width: 300px;
-  background: #deb887;
+  max-width: min(310px, 88vw);
   background: linear-gradient(180deg, #f5d699 0%, #e0be7e 100%);
-  border: 4px solid #5d4037;
+  border: clamp(3px, 1vw, 4px) solid #5d4037;
   border-radius: 16px;
-  padding: 20px 16px;
-  margin: 16px 0 20px 0;
+  padding: clamp(14px, 2.5vh, 20px) clamp(12px, 3vw, 18px);
+  margin: clamp(10px, 2vh, 16px) 0 clamp(14px, 2.5vh, 20px) 0;
   box-shadow: 
     0 10px 25px rgba(0, 0, 0, 0.5),
     inset 0 2px 0 rgba(255, 255, 255, 0.6),
     inset 0 -2px 0 rgba(0, 0, 0, 0.2);
 }
 
-/* "NEW BEST!" Sparkling Badge */
+/* "NEW BEST!" Badge */
 .new-best-badge {
   position: absolute;
-  top: -14px;
-  right: 14px;
+  top: -12px;
+  right: 12px;
   background: #e74c3c;
   color: #ffffff;
-  font-size: 12px;
+  font-size: clamp(10px, 2.5vw, 12px);
   font-weight: 900;
-  padding: 4px 10px;
+  padding: 4px 9px;
   border-radius: 20px;
   border: 2px solid #ffffff;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
@@ -603,26 +633,26 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  gap: 14px;
+  gap: clamp(10px, 2.5vw, 16px);
 }
 
 .medal-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .medal-label {
-  font-size: 11px;
+  font-size: clamp(10px, 2.4vw, 12px);
   letter-spacing: 1px;
   color: #5d4037;
   font-weight: 900;
 }
 
 .medal-badge {
-  width: 66px;
-  height: 66px;
+  width: clamp(52px, 13vw, 66px);
+  height: clamp(52px, 13vw, 66px);
   background: radial-gradient(circle, #ffffff 0%, #e2d9c8 100%);
   border: 3px solid #795548;
   border-radius: 50%;
@@ -634,12 +664,12 @@ html, body {
 }
 
 .medal-icon {
-  font-size: 28px;
+  font-size: clamp(22px, 6vw, 28px);
   line-height: 1;
 }
 
 .medal-tier {
-  font-size: 9px;
+  font-size: clamp(8px, 1.8vw, 10px);
   color: #3e2723;
   font-weight: 900;
   text-transform: uppercase;
@@ -649,7 +679,7 @@ html, body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: clamp(4px, 1vh, 8px);
 }
 
 .score-row {
@@ -659,7 +689,7 @@ html, body {
 }
 
 .score-label {
-  font-size: 13px;
+  font-size: clamp(11px, 2.8vw, 13px);
   letter-spacing: 1px;
   color: #e67e22;
   font-weight: 900;
@@ -667,7 +697,7 @@ html, body {
 }
 
 .score-number {
-  font-size: 28px;
+  font-size: clamp(22px, 5.5vw, 30px);
   font-weight: 900;
   color: #ffffff;
   text-shadow: 2px 2px 0 #5d4037, -1px -1px 0 #5d4037, 1px -1px 0 #5d4037, -1px 1px 0 #5d4037;
@@ -680,8 +710,8 @@ html, body {
 }
 
 .quick-tip {
-  margin-top: 14px;
-  font-size: 11px;
+  margin-top: clamp(8px, 1.8vh, 14px);
+  font-size: clamp(10px, 2.4vw, 12px);
   color: #ecf0f1;
 }
 
@@ -689,26 +719,106 @@ html, body {
   color: #ffd32a;
 }
 
-/* Responsive / Screen Adaptations */
-@media (max-width: 480px) {
+/* Subtle Landscape Device Hint */
+.landscape-hint {
+  display: none;
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid #ffd32a;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 11px;
+  color: #ffd32a;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* ==========================================================================
+   MOBILE & TABLET RESPONSIVE ADAPTATIONS
+   ========================================================================== */
+
+/* Mobile Portrait Mode: Fullscreen edge-to-edge experience */
+@media (max-width: 520px), (max-width: 900px) and (orientation: portrait) {
   .game-wrapper {
     padding: 0;
   }
   
   .game-container {
     width: 100vw;
+    height: 100vh;
     height: 100dvh;
+    max-width: 100vw;
+    max-height: 100dvh;
     border-radius: 0;
     box-shadow: none;
     border: none;
+    aspect-ratio: auto; /* Dynamic canvas height adapts seamlessly */
   }
 
-  .arcade-title {
-    font-size: 38px;
-  }
-
-  .arcade-title-danger {
-    font-size: 38px;
+  .quick-tip {
+    display: none; /* Hide keyboard shortcut tips on touch-only devices */
   }
 }
 
+/* Mobile Landscape Mode (Phone turned sideways) */
+@media (max-height: 520px) and (orientation: landscape) {
+  .game-wrapper {
+    padding: 4px;
+  }
+
+  .game-container {
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100dvh;
+    width: auto;
+    max-width: calc(100dvh * 0.625);
+    aspect-ratio: 400 / 640;
+    border-radius: 12px;
+  }
+
+  .landscape-hint {
+    display: block;
+  }
+
+  .mascot-wrapper {
+    margin: 4px 0;
+  }
+
+  .high-score-card {
+    margin-bottom: 8px;
+    padding: 4px 10px;
+  }
+
+  .instructions-panel {
+    margin-top: 6px;
+    padding: 4px 8px;
+  }
+
+  .score-board-card {
+    margin: 6px 0 10px 0;
+    padding: 8px 12px;
+  }
+}
+
+/* Extremely Small Height Phones (e.g. 480px or older devices) */
+@media (max-height: 600px) and (orientation: portrait) {
+  .mascot-wrapper {
+    margin: 4px 0;
+  }
+
+  .high-score-card {
+    margin-bottom: 10px;
+  }
+
+  .instructions-panel {
+    margin-top: 8px;
+  }
+
+  .score-board-card {
+    margin: 8px 0 10px 0;
+  }
+}

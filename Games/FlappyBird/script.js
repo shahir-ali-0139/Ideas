@@ -2,7 +2,8 @@
  * ============================================================================
  * FLAPPY BIRD - ARCADE EDITION
  * A complete, polished, vanilla HTML5 Canvas game with Web Audio API sound,
- * cookie-based high scores, procedural graphics, and responsive design.
+ * cookie-based high scores, procedural graphics, and responsive design for
+ * both mobile devices and desktop computers.
  * ============================================================================
  */
 
@@ -10,15 +11,15 @@
   'use strict';
 
   /* ==========================================================================
-     1. CONSTANTS & CONFIGURATION
+     1. CONSTANTS & RESPONSIVE CONFIGURATION
      ========================================================================== */
-  const CANVAS_WIDTH = 400;
-  const CANVAS_HEIGHT = 640;
-  const GROUND_HEIGHT = 80;
+  const CANVAS_WIDTH = 400;         // Virtual coordinate width (fixed reference)
+  let CANVAS_HEIGHT = 640;          // Dynamic virtual height (adapts to screen ratio)
+  const GROUND_HEIGHT = 80;         // Height of scrolling ground in virtual units
 
   // Physics tuning (in units per second)
   const GRAVITY = 1050;             // Downward acceleration (px/s^2)
-  const JUMP_STRENGTH = -330;       // Instant upward velocity on flap (px/s)
+  const JUMP_STRENGTH = -335;       // Instant upward velocity on flap (px/s)
   const MAX_FALL_SPEED = 620;       // Terminal velocity (px/s)
 
   // Difficulty & Pipe parameters
@@ -504,7 +505,7 @@
 
     reset() {
       this.x = 95;
-      this.y = 260;
+      this.y = Math.round(CANVAS_HEIGHT * 0.42);
       this.velocity = 0;
       this.angle = 0;
       this.targetAngle = 0;
@@ -525,7 +526,7 @@
       if (currentState === STATES.READY) {
         // Idle gentle floating bob
         this.flapTimer += dt * 5;
-        this.y = 260 + Math.sin(this.flapTimer) * 10;
+        this.y = Math.round(CANVAS_HEIGHT * 0.42) + Math.sin(this.flapTimer) * 10;
         this.angle = 0;
         this.wingState = Math.floor(Math.abs(Math.sin(this.flapTimer * 2)) * 3) % 3;
         return;
@@ -559,15 +560,17 @@
   };
 
   /**
-   * Pipes Collection & Spawner
+   * Pipes Collection & Spawner with Smooth Continuity
    */
   const pipeManager = {
     pipes: [],
     distanceTraveled: 0,
+    lastGapCenterY: null,
 
     reset() {
       this.pipes = [];
       this.distanceTraveled = 0;
+      this.lastGapCenterY = null;
     },
 
     getCurrentSpeed() {
@@ -586,8 +589,22 @@
       const minTopHeight = PIPE_MIN_HEIGHT;
       const maxTopHeight = playableHeight - gap - PIPE_MIN_HEIGHT;
 
-      // Safe randomized gap positioning
-      const topHeight = Math.floor(minTopHeight + Math.random() * (maxTopHeight - minTopHeight));
+      // Calculate safe gap bounds
+      const minCenter = minTopHeight + gap / 2;
+      const maxCenter = playableHeight - PIPE_MIN_HEIGHT - gap / 2;
+
+      let targetCenter;
+      if (this.lastGapCenterY === null) {
+        targetCenter = minCenter + Math.random() * (maxCenter - minCenter);
+      } else {
+        // Smooth variance (max 180px jump from previous pipe) to guarantee fair arcade flow
+        const maxDelta = 180;
+        const delta = (Math.random() * 2 - 1) * maxDelta;
+        targetCenter = Math.max(minCenter, Math.min(maxCenter, this.lastGapCenterY + delta));
+      }
+
+      this.lastGapCenterY = targetCenter;
+      const topHeight = Math.round(targetCenter - gap / 2);
       const bottomY = topHeight + gap;
 
       this.pipes.push({
@@ -699,7 +716,45 @@
   }
 
   /* ==========================================================================
-     6. PROCEDURAL RENDERING ENGINE (Pure Canvas, No external images)
+     6. RESPONSIVE HIGH-DPI CANVAS ADAPTATION
+     ========================================================================== */
+
+  /**
+   * Resizes the canvas buffer dynamically to match mobile and desktop containers,
+   * scaling for Retina/High-DPI displays without ANY stretching or distortion.
+   */
+  function resizeGame() {
+    const rect = gameContainer.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    // High-DPI device pixel ratio (capped at 3 for optimal 60fps performance)
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+
+    // Adapt virtual height to exact container aspect ratio
+    CANVAS_HEIGHT = Math.round(CANVAS_WIDTH * (rect.height / rect.width));
+
+    // Update physical canvas pixel buffer size
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+
+    // Update Mascot canvas on start screen
+    mascotCanvas.width = Math.round(80 * dpr);
+    mascotCanvas.height = Math.round(70 * dpr);
+    mascotCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // Adjust bird position if below new ground level
+    const groundY = CANVAS_HEIGHT - GROUND_HEIGHT;
+    if (bird.y + bird.radius > groundY) {
+      bird.y = groundY - bird.radius;
+    }
+
+    if (currentState === STATES.READY) {
+      bird.y = Math.round(CANVAS_HEIGHT * 0.42);
+    }
+  }
+
+  /* ==========================================================================
+     7. PROCEDURAL RENDERING ENGINE (Pure Canvas, No external images)
      ========================================================================== */
 
   /**
@@ -886,9 +941,14 @@
   }
 
   /**
-   * Main render pass.
+   * Main render pass scaled dynamically to match viewport.
    */
   function render() {
+    // Apply transform scaling from virtual units (400 x CANVAS_HEIGHT) to device pixel buffer
+    const scaleX = canvas.width / CANVAS_WIDTH;
+    const scaleY = canvas.height / CANVAS_HEIGHT;
+    ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+
     // 1. Sky Background Gradient
     const skyGradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT - GROUND_HEIGHT);
     skyGradient.addColorStop(0, '#4ec0ca');
@@ -1027,7 +1087,7 @@
   }
 
   /* ==========================================================================
-     7. GAME STATE MANAGEMENT & TRANSITIONS
+     8. GAME STATE MANAGEMENT & TRANSITIONS
      ========================================================================== */
 
   function setGameState(newState) {
@@ -1170,7 +1230,7 @@
   }
 
   /* ==========================================================================
-     8. MAIN ANIMATION LOOP (Fixed Delta Time)
+     9. MAIN ANIMATION LOOP (Fixed Delta Time)
      ========================================================================== */
   function gameLoop(timestamp) {
     if (!lastTimestamp) lastTimestamp = timestamp;
@@ -1220,7 +1280,7 @@
   }
 
   /* ==========================================================================
-     9. INPUT CONTROLS & EVENT LISTENERS
+     10. INPUT CONTROLS & EVENT LISTENERS
      ========================================================================== */
 
   function handleFlapInput() {
@@ -1275,8 +1335,13 @@
     }
   });
 
-  // Pointer / Touch controls on game canvas
+  // Pointer / Touch controls on game canvas & ready screen
   canvas.addEventListener('pointerdown', function (e) {
+    e.preventDefault();
+    handleFlapInput();
+  });
+
+  readyScreen.addEventListener('pointerdown', function (e) {
     e.preventDefault();
     handleFlapInput();
   });
@@ -1346,10 +1411,10 @@
     }
   });
 
-  // Fullscreen support
+  // Fullscreen support with graceful iOS Safari handling
   fullscreenBtn.addEventListener('click', function (e) {
     e.stopPropagation();
-    if (!document.fullscreenElement) {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
       if (gameContainer.requestFullscreen) {
         gameContainer.requestFullscreen().catch(() => {});
       } else if (gameContainer.webkitRequestFullscreen) {
@@ -1358,19 +1423,25 @@
     } else {
       if (document.exitFullscreen) {
         document.exitFullscreen().catch(() => {});
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
       }
     }
   });
 
-  document.addEventListener('fullscreenchange', function () {
-    if (document.fullscreenElement) {
+  function updateFullscreenIcons() {
+    const isFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+    if (isFs) {
       fsEnterIcon.classList.add('hidden');
       fsExitIcon.classList.remove('hidden');
     } else {
       fsEnterIcon.classList.remove('hidden');
       fsExitIcon.classList.add('hidden');
     }
-  });
+  }
+
+  document.addEventListener('fullscreenchange', updateFullscreenIcons);
+  document.addEventListener('webkitfullscreenchange', updateFullscreenIcons);
 
   // Window blur: Auto-pause game to be considerate
   window.addEventListener('blur', function () {
@@ -1379,10 +1450,19 @@
     }
   });
 
+  // Responsive dynamic resize & orientation change listeners
+  window.addEventListener('resize', resizeGame);
+  window.addEventListener('orientationchange', function () {
+    setTimeout(resizeGame, 100);
+  });
+
   /* ==========================================================================
-     10. INITIALIZATION
+     11. INITIALIZATION
      ========================================================================== */
   function init() {
+    // Initial dynamic layout & resolution sizing
+    resizeGame();
+
     // Populate Initial High Scores
     highScore = getHighScore();
     hudBestScoreEl.textContent = highScore.toString();
@@ -1405,4 +1485,3 @@
   }
 
 })();
-

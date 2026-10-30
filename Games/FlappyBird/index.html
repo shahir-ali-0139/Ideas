@@ -4,16 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#4ec0ca">
-  <meta name="description" content="A polished, fully playable Flappy Bird arcade game built with vanilla HTML5 Canvas, CSS3, and JavaScript.">
+  
+  <!-- Apple Mobile Web App Meta -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Flappy Bird">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="format-detection" content="telephone=no">
+
+  <meta name="description" content="A polished, fully playable Flappy Bird arcade game built with vanilla HTML5 Canvas, CSS3, and JavaScript. Responsive on mobile and desktop.">
   <title>Flappy Bird - Retro Arcade Game</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Main Game Wrapper -->
+  <!-- Main Game Outer Wrapper -->
   <main id="game-wrapper" class="game-wrapper">
     <div id="game-container" class="game-container">
       
-      <!-- HTML5 Canvas for high-performance 60FPS rendering -->
+      <!-- HTML5 Canvas for high-performance 60FPS rendering (Retina & Adaptive DPR) -->
       <canvas id="game-canvas" width="400" height="640" aria-label="Flappy Bird Game Canvas"></canvas>
 
       <!-- Heads-Up Display (HUD) during gameplay -->
@@ -106,7 +114,7 @@
               <span class="key-badge">TAP</span>
               <span class="instruction-sep">/</span>
               <span class="key-badge">CLICK</span>
-              <span class="instruction-action">to Flap & Fly</span>
+              <span class="instruction-action">to Fly</span>
             </div>
             <div class="instruction-sub">
               <span>Press <b>P</b> to pause &bull; <b>M</b> for sound</span>
@@ -205,6 +213,11 @@
         </div>
       </section>
 
+      <!-- Mobile Landscape Rotation Hint -->
+      <div id="landscape-hint" class="landscape-hint" aria-hidden="true">
+        <span>🔄 Rotate device to portrait for best view</span>
+      </div>
+
     </div>
   </main>
 
@@ -212,4 +225,3 @@
   <script src="script.js"></script>
 </body>
 </html>
-
