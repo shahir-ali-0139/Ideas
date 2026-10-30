@@ -2,8 +2,8 @@
  * ============================================================================
  * FLAPPY BIRD - ARCADE EDITION
  * A complete, polished, vanilla HTML5 Canvas game with Web Audio API sound,
- * cookie-based high scores, procedural graphics, and responsive design for
- * both mobile devices and desktop computers.
+ * cookie-based high scores, procedural graphics, and full-screen responsive
+ * design for all mobile devices, tablets, and desktop computers.
  * ============================================================================
  */
 
@@ -13,7 +13,7 @@
   /* ==========================================================================
      1. CONSTANTS & RESPONSIVE CONFIGURATION
      ========================================================================== */
-  const CANVAS_WIDTH = 400;         // Virtual coordinate width (fixed reference)
+  let CANVAS_WIDTH = 400;           // Virtual coordinate width (adapts to widescreen/portrait)
   let CANVAS_HEIGHT = 640;          // Dynamic virtual height (adapts to screen ratio)
   const GROUND_HEIGHT = 80;         // Height of scrolling ground in virtual units
 
@@ -27,7 +27,7 @@
   const MAX_PIPE_SPEED = 235;       // Top pipe speed after progressive scaling
   const INITIAL_PIPE_GAP = 142;     // Initial vertical gap between upper & lower pipes
   const MIN_PIPE_GAP = 108;         // Minimum gap at highest difficulty
-  const PIPE_SPACING = 215;         // Horizontal distance between consecutive pipes
+  const PIPE_SPACING = 225;         // Horizontal distance between consecutive pipes (uniform spacing)
   const PIPE_WIDTH = 64;            // Width of pipe bodies
   const PIPE_CAP_HEIGHT = 26;       // Height of top/bottom pipe collars
   const PIPE_MIN_HEIGHT = 50;       // Minimum vertical pipe length
@@ -428,12 +428,190 @@
   let groundScrollX = 0;
   let isNewRecordAchieved = false;
 
-  // Background Parallax Clouds
-  const clouds = [
-    { x: 30, y: 70, scale: 0.9, speed: 12 },
-    { x: 190, y: 130, scale: 1.15, speed: 18 },
-    { x: 320, y: 55, scale: 0.8, speed: 10 }
-  ];
+  // Custom Bird Sprite Asset (Images/bird.png)
+  const birdImg = new Image();
+  let isBirdImgLoaded = false;
+  birdImg.onload = function () {
+    isBirdImgLoaded = true;
+  };
+  birdImg.src = 'Images/bird.png';
+
+  // Exact sprite bounding box within Images/bird.png (600x600 image)
+  const BIRD_SPRITE = {
+    sx: 104,
+    sy: 161,
+    sWidth: 395,
+    sHeight: 280,
+    width: 38,
+    height: 27
+  };
+
+  /* ==========================================================================
+     5. DYNAMIC CLOUD ENVIRONMENT SYSTEM
+     ========================================================================== */
+
+  const cloudManager = {
+    clouds: [],
+
+    init() {
+      this.clouds = [];
+      const numClouds = Math.max(14, Math.round(CANVAS_WIDTH / 65));
+      for (let i = 0; i < numClouds; i++) {
+        // Distribute clouds evenly across the initial sky view
+        const initialX = (CANVAS_WIDTH / numClouds) * i + (Math.random() * 40 - 20);
+        this.clouds.push(this.createCloud(initialX));
+      }
+    },
+
+    createCloud(x) {
+      // 3 Atmospheric layers: 0 (high cirrus/wispy), 1 (mid fluffy cumulus), 2 (low drift puff)
+      const rand = Math.random();
+      const layer = rand < 0.35 ? 0 : (rand < 0.72 ? 1 : 2);
+      const playableHeight = CANVAS_HEIGHT - GROUND_HEIGHT;
+
+      let speed, scale, y, alpha, type;
+
+      if (layer === 0) {
+        // High altitude slow clouds
+        speed = 8 + Math.random() * 6;
+        scale = 0.7 + Math.random() * 0.45;
+        y = 25 + Math.random() * (playableHeight * 0.32);
+        alpha = 0.42 + Math.random() * 0.2;
+        type = Math.random() > 0.45 ? 'wispy' : 'fluffy';
+      } else if (layer === 1) {
+        // Mid-sky classic voluminous cumulus arcade clouds
+        speed = 15 + Math.random() * 8;
+        scale = 0.95 + Math.random() * 0.55;
+        y = 45 + Math.random() * (playableHeight * 0.42);
+        alpha = 0.82 + Math.random() * 0.15;
+        type = 'fluffy';
+      } else {
+        // Low altitude faster drifting cloud puffs
+        speed = 26 + Math.random() * 12;
+        scale = 0.6 + Math.random() * 0.4;
+        y = playableHeight * 0.3 + Math.random() * (playableHeight * 0.42);
+        alpha = 0.6 + Math.random() * 0.28;
+        type = 'puff';
+      }
+
+      return {
+        x: x !== undefined ? x : CANVAS_WIDTH + 40 + Math.random() * 60,
+        y: y,
+        speed: speed,
+        scale: scale,
+        alpha: alpha,
+        type: type,
+        layer: layer,
+        width: 140 * scale
+      };
+    },
+
+    update(dt) {
+      for (let i = 0; i < this.clouds.length; i++) {
+        const c = this.clouds[i];
+        c.x -= c.speed * dt;
+        if (c.x + c.width < -80) {
+          // Recycle cloud to right side of screen seamlessly
+          this.clouds[i] = this.createCloud(CANVAS_WIDTH + 20 + Math.random() * 80);
+        }
+      }
+    },
+
+    draw() {
+      // Draw clouds sorted by altitude layer for authentic depth
+      for (let layer = 0; layer <= 2; layer++) {
+        for (let i = 0; i < this.clouds.length; i++) {
+          const c = this.clouds[i];
+          if (c.layer === layer) {
+            drawFluffyCloud(ctx, c.x, c.y, c.scale, c.alpha, c.type);
+          }
+        }
+      }
+    }
+  };
+
+  /**
+   * Draws a multi-layered procedural cloud with shading and sunlight highlights.
+   */
+  function drawFluffyCloud(targetCtx, x, y, scale, alpha, type) {
+    targetCtx.save();
+    targetCtx.globalAlpha = Math.max(0, Math.min(1, alpha));
+
+    if (type === 'wispy') {
+      // Soft elongated high-altitude cirrus cloud
+      targetCtx.fillStyle = 'rgba(255, 255, 255, 0.72)';
+      targetCtx.beginPath();
+      targetCtx.ellipse(x + 45 * scale, y, 50 * scale, 12 * scale, 0, 0, Math.PI * 2);
+      targetCtx.ellipse(x + 22 * scale, y - 3 * scale, 32 * scale, 10 * scale, 0, 0, Math.PI * 2);
+      targetCtx.ellipse(x + 72 * scale, y + 2 * scale, 28 * scale, 8 * scale, 0, 0, Math.PI * 2);
+      targetCtx.fill();
+    } else if (type === 'puff') {
+      // Compact cute drift puff
+      targetCtx.fillStyle = 'rgba(255, 255, 255, 0.88)';
+      targetCtx.beginPath();
+      targetCtx.arc(x + 16 * scale, y, 14 * scale, 0, Math.PI * 2);
+      targetCtx.arc(x + 30 * scale, y - 6 * scale, 18 * scale, 0, Math.PI * 2);
+      targetCtx.arc(x + 48 * scale, y, 13 * scale, 0, Math.PI * 2);
+      targetCtx.fill();
+    } else {
+      // Volumetric 3D arcade cumulus cloud with underbelly shadow & sun rim
+
+      // 1. Bottom soft sky-blue shadow underbelly
+      targetCtx.fillStyle = 'rgba(182, 218, 238, 0.7)';
+      targetCtx.beginPath();
+      targetCtx.ellipse(x + 58 * scale, y + 10 * scale, 58 * scale, 15 * scale, 0, 0, Math.PI * 2);
+      targetCtx.fill();
+
+      // 2. Main bright white billowing cloud puffs
+      targetCtx.fillStyle = '#ffffff';
+      targetCtx.beginPath();
+      targetCtx.arc(x + 20 * scale, y + 3 * scale, 18 * scale, 0, Math.PI * 2);
+      targetCtx.arc(x + 38 * scale, y - 9 * scale, 24 * scale, 0, Math.PI * 2);
+      targetCtx.arc(x + 64 * scale, y - 13 * scale, 28 * scale, 0, Math.PI * 2);
+      targetCtx.arc(x + 90 * scale, y - 5 * scale, 22 * scale, 0, Math.PI * 2);
+      targetCtx.arc(x + 108 * scale, y + 6 * scale, 16 * scale, 0, Math.PI * 2);
+      targetCtx.fill();
+
+      // 3. Top subtle bright sunbeam highlight
+      targetCtx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      targetCtx.beginPath();
+      targetCtx.arc(x + 62 * scale, y - 16 * scale, 21 * scale, 0, Math.PI);
+      targetCtx.fill();
+    }
+
+    targetCtx.restore();
+  }
+
+  /**
+   * Draws the warm sunny atmosphere and radial sun corona in the sky.
+   */
+  function drawSun(targetCtx) {
+    const sunX = Math.round(CANVAS_WIDTH * 0.82);
+    const sunY = Math.max(50, Math.round(CANVAS_HEIGHT * 0.12));
+    const sunRadius = 26;
+
+    targetCtx.save();
+    // Radiant atmospheric glow
+    const glowGrad = targetCtx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 100);
+    glowGrad.addColorStop(0, 'rgba(255, 255, 225, 0.45)');
+    glowGrad.addColorStop(0.35, 'rgba(255, 242, 175, 0.22)');
+    glowGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    targetCtx.fillStyle = glowGrad;
+    targetCtx.beginPath();
+    targetCtx.arc(sunX, sunY, 100, 0, Math.PI * 2);
+    targetCtx.fill();
+
+    // Solid bright core
+    const sunGrad = targetCtx.createRadialGradient(sunX - 4, sunY - 4, 3, sunX, sunY, sunRadius);
+    sunGrad.addColorStop(0, '#ffffff');
+    sunGrad.addColorStop(0.6, '#fff9c4');
+    sunGrad.addColorStop(1, '#ffeb3b');
+    targetCtx.fillStyle = sunGrad;
+    targetCtx.beginPath();
+    targetCtx.arc(sunX, sunY, sunRadius, 0, Math.PI * 2);
+    targetCtx.fill();
+    targetCtx.restore();
+  }
 
   // Particle System
   let particles = [];
@@ -504,7 +682,7 @@
     isDead: false,
 
     reset() {
-      this.x = 95;
+      this.x = Math.max(90, Math.min(140, Math.round(CANVAS_WIDTH * 0.22)));
       this.y = Math.round(CANVAS_HEIGHT * 0.42);
       this.velocity = 0;
       this.angle = 0;
@@ -560,17 +738,23 @@
   };
 
   /**
-   * Pipes Collection & Spawner with Smooth Continuity
+   * Pipes Collection & Spawner with Guaranteed Uniform Spacing (No Stacking)
    */
   const pipeManager = {
     pipes: [],
-    distanceTraveled: 0,
     lastGapCenterY: null,
 
     reset() {
       this.pipes = [];
-      this.distanceTraveled = 0;
       this.lastGapCenterY = null;
+
+      // Seed initial pillars ahead of the bird with guaranteed uniform distance
+      const firstPipeX = bird.x + 280;
+      let nextX = firstPipeX;
+      while (nextX <= CANVAS_WIDTH + PIPE_SPACING) {
+        this.spawnPipeAt(nextX);
+        nextX += PIPE_SPACING;
+      }
     },
 
     getCurrentSpeed() {
@@ -583,7 +767,7 @@
       return Math.max(MIN_PIPE_GAP, INITIAL_PIPE_GAP - score * 0.75);
     },
 
-    spawnPipe() {
+    spawnPipeAt(xPos) {
       const gap = this.getCurrentGap();
       const playableHeight = CANVAS_HEIGHT - GROUND_HEIGHT;
       const minTopHeight = PIPE_MIN_HEIGHT;
@@ -597,8 +781,8 @@
       if (this.lastGapCenterY === null) {
         targetCenter = minCenter + Math.random() * (maxCenter - minCenter);
       } else {
-        // Smooth variance (max 180px jump from previous pipe) to guarantee fair arcade flow
-        const maxDelta = 180;
+        // Smooth variance (max 150px vertical jump between consecutive pillars)
+        const maxDelta = 150;
         const delta = (Math.random() * 2 - 1) * maxDelta;
         targetCenter = Math.max(minCenter, Math.min(maxCenter, this.lastGapCenterY + delta));
       }
@@ -608,7 +792,7 @@
       const bottomY = topHeight + gap;
 
       this.pipes.push({
-        x: CANVAS_WIDTH + 10,
+        x: Math.round(xPos),
         topHeight: topHeight,
         bottomY: bottomY,
         width: PIPE_WIDTH,
@@ -619,15 +803,8 @@
     update(dt) {
       const speed = this.getCurrentSpeed();
       const moveDist = speed * dt;
-      this.distanceTraveled += moveDist;
 
-      // Spawn pipes at uniform physical distance intervals
-      if (this.distanceTraveled >= PIPE_SPACING || this.pipes.length === 0) {
-        this.spawnPipe();
-        this.distanceTraveled = 0;
-      }
-
-      // Move existing pipes leftward
+      // 1. Move all existing pipes leftward
       for (let i = this.pipes.length - 1; i >= 0; i--) {
         const pipe = this.pipes[i];
         pipe.x -= moveDist;
@@ -648,15 +825,25 @@
         }
 
         // Remove off-screen pipes
-        if (pipe.x + pipe.width < -20) {
+        if (pipe.x + pipe.width < -40) {
           this.pipes.splice(i, 1);
+        }
+      }
+
+      // 2. Spawn new pipes relative to the rightmost pipe - GUARANTEES ZERO STACKING
+      if (this.pipes.length === 0) {
+        this.spawnPipeAt(CANVAS_WIDTH + 40);
+      } else {
+        while (this.pipes.length > 0 && this.pipes[this.pipes.length - 1].x <= CANVAS_WIDTH + 40) {
+          const last = this.pipes[this.pipes.length - 1];
+          this.spawnPipeAt(last.x + PIPE_SPACING);
         }
       }
     }
   };
 
   /* ==========================================================================
-     5. COLLISION DETECTION
+     6. COLLISION DETECTION
      ========================================================================== */
 
   /**
@@ -716,12 +903,30 @@
   }
 
   /* ==========================================================================
-     6. RESPONSIVE HIGH-DPI CANVAS ADAPTATION
+     7. FULLSCREEN & RESPONSIVE HIGH-DPI CANVAS ADAPTATION
      ========================================================================== */
 
   /**
-   * Resizes the canvas buffer dynamically to match mobile and desktop containers,
-   * scaling for Retina/High-DPI displays without ANY stretching or distortion.
+   * Automatically requests browser fullscreen upon user gesture.
+   */
+  function requestFullscreenSafe() {
+    try {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        const el = document.documentElement || gameContainer;
+        if (el.requestFullscreen) {
+          el.requestFullscreen().catch(() => {});
+        } else if (el.webkitRequestFullscreen) {
+          el.webkitRequestFullscreen();
+        }
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }
+
+  /**
+   * Resizes the canvas buffer dynamically to fill any device screen completely
+   * without stretching or distorting aspect ratios.
    */
   function resizeGame() {
     const rect = gameContainer.getBoundingClientRect();
@@ -729,9 +934,17 @@
 
     // High-DPI device pixel ratio (capped at 3 for optimal 60fps performance)
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const aspect = rect.width / rect.height;
 
-    // Adapt virtual height to exact container aspect ratio
-    CANVAS_HEIGHT = Math.round(CANVAS_WIDTH * (rect.height / rect.width));
+    if (aspect >= 1) {
+      // Landscape / Widescreen Desktop / Tablet Landscape
+      CANVAS_HEIGHT = 640;
+      CANVAS_WIDTH = Math.round(CANVAS_HEIGHT * aspect);
+    } else {
+      // Portrait Smartphone / Tablet Portrait
+      CANVAS_WIDTH = 400;
+      CANVAS_HEIGHT = Math.round(CANVAS_WIDTH / aspect);
+    }
 
     // Update physical canvas pixel buffer size
     canvas.width = Math.round(rect.width * dpr);
@@ -742,7 +955,9 @@
     mascotCanvas.height = Math.round(70 * dpr);
     mascotCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Adjust bird position if below new ground level
+    // Adjust bird position horizontally and vertically
+    bird.x = Math.max(90, Math.min(140, Math.round(CANVAS_WIDTH * 0.22)));
+
     const groundY = CANVAS_HEIGHT - GROUND_HEIGHT;
     if (bird.y + bird.radius > groundY) {
       bird.y = groundY - bird.radius;
@@ -751,44 +966,27 @@
     if (currentState === STATES.READY) {
       bird.y = Math.round(CANVAS_HEIGHT * 0.42);
     }
+
+    // Re-initialize cloud fleet to cover new width
+    if (cloudManager.clouds.length === 0) {
+      cloudManager.init();
+    }
   }
 
-  // Custom Bird Sprite Asset (Images/bird.png)
-  const birdImg = new Image();
-  let isBirdImgLoaded = false;
-  birdImg.onload = function () {
-    isBirdImgLoaded = true;
-  };
-  birdImg.src = 'Images/bird.png';
-
-  // Exact sprite bounding box within Images/bird.png (600x600 image)
-  const BIRD_SPRITE = {
-    sx: 104,
-    sy: 161,
-    sWidth: 395,
-    sHeight: 280,
-    width: 38,
-    height: 27
-  };
-
   /* ==========================================================================
-     7. RENDERING ENGINE (Custom Sprite + Procedural Canvas World)
+     8. RENDERING ENGINE (Custom Sprite + Cloud Atmosphere)
      ========================================================================== */
 
   /**
    * Draws the custom bird image with rotation, squash-and-stretch wing dynamics,
-   * drop shadow, and crisp pixel-art scaling (with procedural fallback).
+   * and NO shadow under the bird (completely clean sprite).
    */
   function drawBirdGraphic(targetCtx, x, y, angle, wingState) {
     targetCtx.save();
     targetCtx.translate(x, y);
     targetCtx.rotate(angle);
 
-    // Subtle drop shadow under bird
-    targetCtx.fillStyle = 'rgba(0, 0, 0, 0.18)';
-    targetCtx.beginPath();
-    targetCtx.ellipse(0, 16, 15, 6, 0, 0, Math.PI * 2);
-    targetCtx.fill();
+    // Drop shadow under bird has been completely removed per user request
 
     if (isBirdImgLoaded && birdImg.complete && birdImg.naturalWidth > 0) {
       // Squash & stretch dynamics based on wing flap state for lively animation
@@ -984,63 +1182,49 @@
   }
 
   /**
-   * Draws fluffy parallax clouds.
-   */
-  function drawCloud(cx, cy, scale) {
-    ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
-    ctx.beginPath();
-    ctx.arc(cx, cy, 20 * scale, 0, Math.PI * 2);
-    ctx.arc(cx + 18 * scale, cy - 8 * scale, 24 * scale, 0, Math.PI * 2);
-    ctx.arc(cx + 42 * scale, cy - 2 * scale, 20 * scale, 0, Math.PI * 2);
-    ctx.arc(cx + 60 * scale, cy + 4 * scale, 14 * scale, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  /**
-   * Main render pass scaled dynamically to match viewport.
+   * Main render pass scaled dynamically to match full screen viewport.
    */
   function render() {
-    // Apply transform scaling from virtual units (400 x CANVAS_HEIGHT) to device pixel buffer
+    // Apply transform scaling from virtual units to device pixel buffer
     const scaleX = canvas.width / CANVAS_WIDTH;
     const scaleY = canvas.height / CANVAS_HEIGHT;
     ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
 
-    // 1. Sky Background Gradient
+    // 1. Vibrant Sky Background Gradient
     const skyGradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT - GROUND_HEIGHT);
-    skyGradient.addColorStop(0, '#4ec0ca');
-    skyGradient.addColorStop(0.7, '#85e1e7');
-    skyGradient.addColorStop(1, '#c5f2f5');
+    skyGradient.addColorStop(0, '#29b6f6');    // Deep vibrant sky blue
+    skyGradient.addColorStop(0.42, '#4fc3f7'); // Sunny blue
+    skyGradient.addColorStop(0.82, '#b3e5fc'); // Soft horizon blue
+    skyGradient.addColorStop(1, '#e1f5fe');    // Warm golden-white haze
     ctx.fillStyle = skyGradient;
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // 2. Parallax Floating Clouds
-    for (let i = 0; i < clouds.length; i++) {
-      const c = clouds[i];
-      drawCloud(c.x, c.y, c.scale);
-    }
+    // 2. Radiant Sunny Atmosphere
+    drawSun(ctx);
 
-    // 3. Distant City / Bush Skyline Silhouette
+    // 3. Multi-layer Parallax Cloud Environment
+    cloudManager.draw();
+
+    // 4. Distant City / Rolling Hills Skyline Silhouette
     ctx.fillStyle = 'rgba(115, 191, 46, 0.28)';
     ctx.beginPath();
     const horizonY = CANVAS_HEIGHT - GROUND_HEIGHT;
     ctx.moveTo(0, horizonY);
     for (let x = 0; x <= CANVAS_WIDTH; x += 40) {
-      const hillHeight = 22 + Math.sin(x * 0.04) * 8;
+      const hillHeight = 22 + Math.sin(x * 0.035) * 8 + Math.cos(x * 0.015) * 6;
       ctx.lineTo(x, horizonY - hillHeight);
     }
     ctx.lineTo(CANVAS_WIDTH, horizonY);
     ctx.closePath();
     ctx.fill();
 
-    // 4. Pipes
+    // 5. Pipes
     for (let i = 0; i < pipeManager.pipes.length; i++) {
       const p = pipeManager.pipes[i];
       drawPipe(p.x, p.topHeight, p.bottomY, p.width);
     }
 
-    // 5. Scrolling Ground
+    // 6. Scrolling Ground
     const groundY = CANVAS_HEIGHT - GROUND_HEIGHT;
     
     // Top Grass Strip (Lime Green with animated diagonal chevrons)
@@ -1084,7 +1268,7 @@
       ctx.fill();
     }
 
-    // 6. Active Particles
+    // 7. Active Particles
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
       ctx.save();
@@ -1096,7 +1280,7 @@
       ctx.restore();
     }
 
-    // 7. Bird Player Character
+    // 8. Bird Player Character (without shadow)
     drawBirdGraphic(ctx, bird.x, bird.y, bird.angle, bird.wingState);
   }
 
@@ -1119,19 +1303,6 @@
   }
 
   /**
-   * Updates cloud drift.
-   */
-  function updateClouds(dt) {
-    for (let i = 0; i < clouds.length; i++) {
-      const c = clouds[i];
-      c.x -= c.speed * dt;
-      if (c.x < -120) {
-        c.x = CANVAS_WIDTH + 60;
-      }
-    }
-  }
-
-  /**
    * Idle mascot render on start screen.
    */
   let mascotTime = 0;
@@ -1145,7 +1316,7 @@
   }
 
   /* ==========================================================================
-     8. GAME STATE MANAGEMENT & TRANSITIONS
+     9. GAME STATE MANAGEMENT & TRANSITIONS
      ========================================================================== */
 
   function setGameState(newState) {
@@ -1243,6 +1414,8 @@
    */
   function startGame() {
     SoundSystem.ensureContextReady();
+    requestFullscreenSafe();
+
     score = 0;
     hudScoreEl.textContent = '0';
     bird.reset();
@@ -1288,7 +1461,7 @@
   }
 
   /* ==========================================================================
-     9. MAIN ANIMATION LOOP (Fixed Delta Time)
+     10. MAIN ANIMATION LOOP (Fixed Delta Time)
      ========================================================================== */
   function gameLoop(timestamp) {
     if (!lastTimestamp) lastTimestamp = timestamp;
@@ -1299,7 +1472,7 @@
     lastTimestamp = timestamp;
 
     // 1. Logic Update
-    updateClouds(dt);
+    cloudManager.update(dt);
     updateParticles(dt);
     updateMascot(dt);
 
@@ -1338,11 +1511,12 @@
   }
 
   /* ==========================================================================
-     10. INPUT CONTROLS & EVENT LISTENERS
+     11. INPUT CONTROLS & EVENT LISTENERS
      ========================================================================== */
 
   function handleFlapInput() {
     SoundSystem.ensureContextReady();
+    requestFullscreenSafe();
 
     if (currentState === STATES.READY) {
       readyScreen.classList.remove('active');
@@ -1515,11 +1689,14 @@
   });
 
   /* ==========================================================================
-     11. INITIALIZATION
+     12. INITIALIZATION
      ========================================================================== */
   function init() {
     // Initial dynamic layout & resolution sizing
     resizeGame();
+
+    // Initialize atmospheric cloud fleet
+    cloudManager.init();
 
     // Populate Initial High Scores
     highScore = getHighScore();
