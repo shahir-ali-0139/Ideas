@@ -446,7 +446,7 @@
         vx: -(40 + Math.random() * 30),
         vy: 20 + (Math.random() * 40 - 20),
         radius: 2 + Math.random() * 2,
-        color: '#ffffff',
+        color: Math.random() > 0.5 ? '#f8f8b8' : '#ffffff',
         alpha: 0.8,
         life: 0.35
       });
@@ -753,12 +753,31 @@
     }
   }
 
+  // Custom Bird Sprite Asset (Images/bird.png)
+  const birdImg = new Image();
+  let isBirdImgLoaded = false;
+  birdImg.onload = function () {
+    isBirdImgLoaded = true;
+  };
+  birdImg.src = 'Images/bird.png';
+
+  // Exact sprite bounding box within Images/bird.png (600x600 image)
+  const BIRD_SPRITE = {
+    sx: 104,
+    sy: 161,
+    sWidth: 395,
+    sHeight: 280,
+    width: 38,
+    height: 27
+  };
+
   /* ==========================================================================
-     7. PROCEDURAL RENDERING ENGINE (Pure Canvas, No external images)
+     7. RENDERING ENGINE (Custom Sprite + Procedural Canvas World)
      ========================================================================== */
 
   /**
-   * Draws a layered, stylized retro bird onto any target canvas context.
+   * Draws the custom bird image with rotation, squash-and-stretch wing dynamics,
+   * drop shadow, and crisp pixel-art scaling (with procedural fallback).
    */
   function drawBirdGraphic(targetCtx, x, y, angle, wingState) {
     targetCtx.save();
@@ -766,99 +785,138 @@
     targetCtx.rotate(angle);
 
     // Subtle drop shadow under bird
-    targetCtx.fillStyle = 'rgba(0, 0, 0, 0.16)';
+    targetCtx.fillStyle = 'rgba(0, 0, 0, 0.18)';
     targetCtx.beginPath();
     targetCtx.ellipse(0, 16, 15, 6, 0, 0, Math.PI * 2);
     targetCtx.fill();
 
-    // Main Body: Rounded golden sphere
-    const bodyGradient = targetCtx.createRadialGradient(-3, -3, 3, 0, 0, 16);
-    bodyGradient.addColorStop(0, '#fff176');
-    bodyGradient.addColorStop(0.5, '#fbc02d');
-    bodyGradient.addColorStop(1, '#f57f17');
+    if (isBirdImgLoaded && birdImg.complete && birdImg.naturalWidth > 0) {
+      // Squash & stretch dynamics based on wing flap state for lively animation
+      let scaleX = 1;
+      let scaleY = 1;
+      let offsetY = 0;
 
-    targetCtx.fillStyle = bodyGradient;
-    targetCtx.lineWidth = 2.2;
-    targetCtx.strokeStyle = '#5d4037';
-    targetCtx.beginPath();
-    targetCtx.ellipse(0, 0, 16, 13, 0, 0, Math.PI * 2);
-    targetCtx.fill();
-    targetCtx.stroke();
+      if (wingState === 2) {
+        // Flap impulse: slight horizontal expansion & lift
+        scaleX = 1.06;
+        scaleY = 0.94;
+        offsetY = -1.2;
+      } else if (wingState === 0) {
+        // Freefall glide: slight vertical elongation
+        scaleX = 0.96;
+        scaleY = 1.04;
+        offsetY = 1.2;
+      }
 
-    // Cream Belly Accent
-    targetCtx.fillStyle = '#fffde7';
-    targetCtx.beginPath();
-    targetCtx.ellipse(-4, 4, 9, 6, -0.2, 0, Math.PI);
-    targetCtx.fill();
+      targetCtx.scale(scaleX, scaleY);
 
-    // Rosy Blush Cheek
-    targetCtx.fillStyle = 'rgba(255, 112, 67, 0.45)';
-    targetCtx.beginPath();
-    targetCtx.arc(3, 4, 3.5, 0, Math.PI * 2);
-    targetCtx.fill();
+      // Disable smoothing during sprite draw for ultra-crisp arcade pixel art
+      const prevSmoothing = targetCtx.imageSmoothingEnabled;
+      targetCtx.imageSmoothingEnabled = false;
 
-    // Animated Wing
-    targetCtx.save();
-    targetCtx.translate(-5, 0);
-    let wingOffsetAngle = 0;
-    if (wingState === 0) wingOffsetAngle = 0.35;       // Down
-    else if (wingState === 1) wingOffsetAngle = 0;     // Mid
-    else if (wingState === 2) wingOffsetAngle = -0.4;  // Up
-    targetCtx.rotate(wingOffsetAngle);
+      targetCtx.drawImage(
+        birdImg,
+        BIRD_SPRITE.sx,
+        BIRD_SPRITE.sy,
+        BIRD_SPRITE.sWidth,
+        BIRD_SPRITE.sHeight,
+        -BIRD_SPRITE.width / 2,
+        -BIRD_SPRITE.height / 2 + offsetY,
+        BIRD_SPRITE.width,
+        BIRD_SPRITE.height
+      );
 
-    targetCtx.fillStyle = '#fff9c4';
-    targetCtx.strokeStyle = '#5d4037';
-    targetCtx.lineWidth = 2;
-    targetCtx.beginPath();
-    targetCtx.ellipse(0, 0, 9, 6, -0.15, 0, Math.PI * 2);
-    targetCtx.fill();
-    targetCtx.stroke();
-    targetCtx.restore();
+      targetCtx.imageSmoothingEnabled = prevSmoothing;
+    } else {
+      // Fallback procedural bird if image is still loading
+      const bodyGradient = targetCtx.createRadialGradient(-3, -3, 3, 0, 0, 16);
+      bodyGradient.addColorStop(0, '#fff176');
+      bodyGradient.addColorStop(0.5, '#fbc02d');
+      bodyGradient.addColorStop(1, '#f57f17');
 
-    // Big Eye (Sclera + Pupil + Glint)
-    targetCtx.fillStyle = '#ffffff';
-    targetCtx.strokeStyle = '#5d4037';
-    targetCtx.lineWidth = 2;
-    targetCtx.beginPath();
-    targetCtx.arc(7, -4, 5.5, 0, Math.PI * 2);
-    targetCtx.fill();
-    targetCtx.stroke();
+      targetCtx.fillStyle = bodyGradient;
+      targetCtx.lineWidth = 2.2;
+      targetCtx.strokeStyle = '#5d4037';
+      targetCtx.beginPath();
+      targetCtx.ellipse(0, 0, 16, 13, 0, 0, Math.PI * 2);
+      targetCtx.fill();
+      targetCtx.stroke();
 
-    // Pupil
-    targetCtx.fillStyle = '#212121';
-    targetCtx.beginPath();
-    targetCtx.arc(8.5, -4, 2.8, 0, Math.PI * 2);
-    targetCtx.fill();
+      // Cream Belly Accent
+      targetCtx.fillStyle = '#fffde7';
+      targetCtx.beginPath();
+      targetCtx.ellipse(-4, 4, 9, 6, -0.2, 0, Math.PI);
+      targetCtx.fill();
 
-    // White Glint
-    targetCtx.fillStyle = '#ffffff';
-    targetCtx.beginPath();
-    targetCtx.arc(7.5, -5.5, 1.2, 0, Math.PI * 2);
-    targetCtx.fill();
+      // Rosy Blush Cheek
+      targetCtx.fillStyle = 'rgba(255, 112, 67, 0.45)';
+      targetCtx.beginPath();
+      targetCtx.arc(3, 4, 3.5, 0, Math.PI * 2);
+      targetCtx.fill();
 
-    // Beak: Upper and lower lips
-    targetCtx.fillStyle = '#ff7043';
-    targetCtx.strokeStyle = '#bf360c';
-    targetCtx.lineWidth = 1.8;
+      // Animated Wing
+      targetCtx.save();
+      targetCtx.translate(-5, 0);
+      let wingOffsetAngle = 0;
+      if (wingState === 0) wingOffsetAngle = 0.35;       // Down
+      else if (wingState === 1) wingOffsetAngle = 0;     // Mid
+      else if (wingState === 2) wingOffsetAngle = -0.4;  // Up
+      targetCtx.rotate(wingOffsetAngle);
 
-    // Upper Beak
-    targetCtx.beginPath();
-    targetCtx.moveTo(11, -2);
-    targetCtx.lineTo(20, 1);
-    targetCtx.lineTo(12, 3);
-    targetCtx.closePath();
-    targetCtx.fill();
-    targetCtx.stroke();
+      targetCtx.fillStyle = '#fff9c4';
+      targetCtx.strokeStyle = '#5d4037';
+      targetCtx.lineWidth = 2;
+      targetCtx.beginPath();
+      targetCtx.ellipse(0, 0, 9, 6, -0.15, 0, Math.PI * 2);
+      targetCtx.fill();
+      targetCtx.stroke();
+      targetCtx.restore();
 
-    // Lower Beak
-    targetCtx.fillStyle = '#f4511e';
-    targetCtx.beginPath();
-    targetCtx.moveTo(11, 2);
-    targetCtx.lineTo(18, 2);
-    targetCtx.lineTo(12, 6);
-    targetCtx.closePath();
-    targetCtx.fill();
-    targetCtx.stroke();
+      // Big Eye (Sclera + Pupil + Glint)
+      targetCtx.fillStyle = '#ffffff';
+      targetCtx.strokeStyle = '#5d4037';
+      targetCtx.lineWidth = 2;
+      targetCtx.beginPath();
+      targetCtx.arc(7, -4, 5.5, 0, Math.PI * 2);
+      targetCtx.fill();
+      targetCtx.stroke();
+
+      // Pupil
+      targetCtx.fillStyle = '#212121';
+      targetCtx.beginPath();
+      targetCtx.arc(8.5, -4, 2.8, 0, Math.PI * 2);
+      targetCtx.fill();
+
+      // White Glint
+      targetCtx.fillStyle = '#ffffff';
+      targetCtx.beginPath();
+      targetCtx.arc(7.5, -5.5, 1.2, 0, Math.PI * 2);
+      targetCtx.fill();
+
+      // Beak: Upper and lower lips
+      targetCtx.fillStyle = '#ff7043';
+      targetCtx.strokeStyle = '#bf360c';
+      targetCtx.lineWidth = 1.8;
+
+      // Upper Beak
+      targetCtx.beginPath();
+      targetCtx.moveTo(11, -2);
+      targetCtx.lineTo(20, 1);
+      targetCtx.lineTo(12, 3);
+      targetCtx.closePath();
+      targetCtx.fill();
+      targetCtx.stroke();
+
+      // Lower Beak
+      targetCtx.fillStyle = '#f4511e';
+      targetCtx.beginPath();
+      targetCtx.moveTo(11, 2);
+      targetCtx.lineTo(18, 2);
+      targetCtx.lineTo(12, 6);
+      targetCtx.closePath();
+      targetCtx.fill();
+      targetCtx.stroke();
+    }
 
     targetCtx.restore();
   }
