@@ -80,13 +80,18 @@ body.theme-classic {
 
 html, body {
   width: 100%;
-  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
   font-family: var(--font-family);
   background-color: var(--bg-app);
   color: var(--text-main);
   line-height: 1.4;
   -webkit-font-smoothing: antialiased;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 /* Main Container Layout */
@@ -94,6 +99,8 @@ html, body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
 }
 
 /* Header */
@@ -482,14 +489,16 @@ html, body {
 /* Board Frame */
 .board-frame {
   position: relative;
-  width: min(74vh, 600px, 86vw);
-  height: min(74vh, 600px, 86vw);
+  width: min(72vh, 72dvh, 600px, calc(100vw - 48px));
+  height: min(72vh, 72dvh, 600px, calc(100vw - 48px));
+  aspect-ratio: 1 / 1;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--border-subtle);
   border-radius: 8px;
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
   background-color: var(--board-dark);
+  touch-action: none;
 }
 
 /* Chessboard Grid */
@@ -500,6 +509,7 @@ html, body {
   grid-template-columns: repeat(8, 1fr);
   grid-template-rows: repeat(8, 1fr);
   position: relative;
+  touch-action: none;
 }
 
 /* Squares */
@@ -510,6 +520,7 @@ html, body {
   justify-content: center;
   cursor: pointer;
   transition: background-color 0.15s ease;
+  touch-action: none;
 }
 
 .square.light {
@@ -525,20 +536,21 @@ html, body {
 /* Coordinate notations on squares */
 .coord-rank, .coord-file {
   position: absolute;
-  font-size: 0.68rem;
+  font-size: clamp(8px, 1.8vw, 11px);
   font-weight: 700;
   pointer-events: none;
   opacity: 0.85;
+  user-select: none;
 }
 
 .coord-rank {
-  top: 4px;
-  left: 4px;
+  top: clamp(2px, 0.6vw, 4px);
+  left: clamp(2px, 0.6vw, 4px);
 }
 
 .coord-file {
-  bottom: 2px;
-  right: 4px;
+  bottom: clamp(1px, 0.5vw, 3px);
+  right: clamp(2px, 0.6vw, 4px);
 }
 
 /* Square Highlight States */
@@ -1202,13 +1214,37 @@ html, body {
 }
 
 /* ==========================================================================
-   Responsive Breakpoints
+   Responsive Breakpoints & Device Adaptations
    ========================================================================== */
+
+/* Fullscreen Mode Styling */
+:fullscreen .app-layout,
+:-webkit-full-screen .app-layout,
+:-moz-full-screen .app-layout,
+:-ms-fullscreen .app-layout {
+  height: 100vh;
+  height: 100dvh;
+  justify-content: space-between;
+}
+
+:fullscreen .app-header,
+:-webkit-full-screen .app-header {
+  padding: 8px 20px;
+}
+
+:fullscreen .game-container,
+:-webkit-full-screen .game-container {
+  padding: 10px 16px;
+  flex: 1;
+}
+
+/* Tablet Portrait & Medium Screens (<= 980px) */
 @media (max-width: 980px) {
   .game-container {
     flex-direction: column;
     align-items: center;
-    gap: 20px;
+    gap: 16px;
+    padding: 14px 12px;
   }
 
   .game-sidebar {
@@ -1221,13 +1257,193 @@ html, body {
   }
 }
 
-@media (max-width: 520px) {
+/* Mobile Portrait (< 640px) */
+@media (max-width: 640px) {
   .app-header {
-    padding: 10px 14px;
+    padding: 8px 12px;
+  }
+
+  .brand-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+
+  .brand-icon .icon-crown {
+    font-size: 18px;
   }
 
   .brand-text h1 {
-    font-size: 1rem;
+    font-size: 0.95rem;
+    gap: 6px;
+  }
+
+  .brand-text .subtitle {
+    display: none;
+  }
+
+  .header-actions {
+    gap: 8px;
+  }
+
+  .btn-icon {
+    padding: 6px 9px;
+    font-size: 0.9rem;
+  }
+
+  .theme-picker select {
+    padding: 6px 8px;
+    font-size: 0.78rem;
+    max-width: 90px;
+  }
+
+  .status-pill {
+    padding: 5px 9px;
+    font-size: 0.72rem;
+  }
+
+  .game-container {
+    padding: 8px 4px;
+    gap: 12px;
+  }
+
+  .board-stage {
+    gap: 6px;
+    width: 100%;
+  }
+
+  .board-eval-wrapper {
+    gap: 6px;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .eval-bar-container {
+    width: 14px;
+    border-radius: 4px;
+  }
+
+  .eval-score-text {
+    font-size: 0.55rem;
+    bottom: 2px;
+  }
+
+  .board-frame {
+    width: min(calc(100vw - 32px), calc(100dvh - 210px), 500px);
+    height: min(calc(100vw - 32px), calc(100dvh - 210px), 500px);
+  }
+
+  .player-card {
+    padding: 6px 10px;
+    border-radius: 8px;
+  }
+
+  .player-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 16px;
+  }
+
+  .player-name {
+    font-size: 0.85rem;
+  }
+
+  .color-badge, .difficulty-tag, .turn-pill {
+    font-size: 0.65rem;
+    padding: 1px 5px;
+  }
+
+  .captured-piece {
+    width: 15px;
+    height: 15px;
+    margin-left: -4px;
+  }
+
+  .material-lead {
+    font-size: 0.7rem;
+  }
+
+  .game-sidebar {
+    width: 100%;
+    padding: 0 4px;
+    gap: 12px;
+  }
+
+  .sidebar-card {
+    padding: 12px;
+    border-radius: 10px;
+  }
+
+  .actions-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .btn {
+    padding: 9px 10px;
+    font-size: 0.8rem;
+    min-height: 42px;
+  }
+
+  .moves-card {
+    height: 160px;
+  }
+
+  .promotion-dialog {
+    padding: 14px;
+    max-width: 300px;
+  }
+
+  .promo-piece {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* Extra Small Phones (< 360px) */
+@media (max-width: 360px) {
+  .app-header {
+    padding: 6px 8px;
+  }
+
+  .brand-text h1 {
+    font-size: 0.85rem;
+  }
+
+  .header-actions {
+    gap: 4px;
+  }
+
+  .status-pill {
+    display: none; /* Hide status pill on tiny screens to preserve space */
+  }
+
+  .board-frame {
+    width: min(calc(100vw - 24px), calc(100dvh - 200px), 320px);
+    height: min(calc(100vw - 24px), calc(100dvh - 200px), 320px);
+  }
+
+  .player-name-row {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+}
+
+/* Landscape Mode on Phones & Small Tablets (height <= 560px) */
+@media (max-height: 560px) and (orientation: landscape) {
+  .app-header {
+    padding: 4px 16px;
+  }
+
+  .brand-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+  }
+
+  .brand-text h1 {
+    font-size: 0.9rem;
   }
 
   .brand-text .subtitle {
@@ -1235,7 +1451,42 @@ html, body {
   }
 
   .game-container {
-    padding: 10px 6px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    gap: 14px;
+    max-width: 100%;
+  }
+
+  .board-stage {
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .player-card {
+    padding: 4px 8px;
+    max-width: none;
+    width: 100%;
+  }
+
+  .player-avatar {
+    width: 26px;
+    height: 26px;
+    font-size: 14px;
+  }
+
+  .player-name {
+    font-size: 0.8rem;
+  }
+
+  .captured-row {
+    height: 18px;
+  }
+
+  .captured-piece {
+    width: 14px;
+    height: 14px;
   }
 
   .board-eval-wrapper {
@@ -1243,10 +1494,37 @@ html, body {
   }
 
   .eval-bar-container {
-    width: 16px;
+    width: 14px;
+  }
+
+  .board-frame {
+    width: min(calc(100dvh - 110px), calc(100vw - 360px), 480px);
+    height: min(calc(100dvh - 110px), calc(100vw - 360px), 480px);
+  }
+
+  .game-sidebar {
+    width: 320px;
+    max-height: calc(100dvh - 56px);
+    overflow-y: auto;
+    gap: 8px;
+    padding-right: 4px;
+  }
+
+  .sidebar-card {
+    padding: 10px;
   }
 
   .actions-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+  }
+
+  .btn {
+    padding: 7px 6px;
+    font-size: 0.76rem;
+  }
+
+  .moves-card {
+    height: 130px;
   }
 }

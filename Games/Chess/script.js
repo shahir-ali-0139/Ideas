@@ -419,6 +419,122 @@
   }
 
   // ==========================================================================
+  // Fullscreen Manager
+  // Automatically enters fullscreen on visit / first interaction
+  // and provides dedicated toggle control
+  // ==========================================================================
+  class FullscreenManager {
+    constructor(btnEl) {
+      this.btn = btnEl;
+      this.init();
+    }
+
+    init() {
+      // 1. Try immediate fullscreen request on load
+      this.tryImmediateFullscreen();
+
+      // 2. On first user interaction, automatically enter fullscreen if not yet active
+      const autoFullscreenOnFirstGesture = () => {
+        if (!this.isFullscreen()) {
+          this.requestFullscreen().catch(() => {});
+        }
+        cleanup();
+      };
+
+      const cleanup = () => {
+        document.removeEventListener('pointerdown', autoFullscreenOnFirstGesture, true);
+        document.removeEventListener('click', autoFullscreenOnFirstGesture, true);
+        document.removeEventListener('touchstart', autoFullscreenOnFirstGesture, true);
+      };
+
+      document.addEventListener('pointerdown', autoFullscreenOnFirstGesture, true);
+      document.addEventListener('click', autoFullscreenOnFirstGesture, true);
+      document.addEventListener('touchstart', autoFullscreenOnFirstGesture, true);
+
+      // 3. Button click toggle
+      if (this.btn) {
+        this.btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.toggle();
+        });
+      }
+
+      // 4. Update button icon on fullscreen change
+      const onFsChange = () => this.updateUI();
+      document.addEventListener('fullscreenchange', onFsChange);
+      document.addEventListener('webkitfullscreenchange', onFsChange);
+      document.addEventListener('mozfullscreenchange', onFsChange);
+      document.addEventListener('MSFullscreenChange', onFsChange);
+    }
+
+    isFullscreen() {
+      return !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      );
+    }
+
+    async tryImmediateFullscreen() {
+      try {
+        if (!this.isFullscreen()) {
+          await this.requestFullscreen();
+        }
+      } catch (err) {
+        // Handled cleanly by first user gesture listener
+      }
+    }
+
+    async requestFullscreen() {
+      const docEl = document.documentElement;
+      if (docEl.requestFullscreen) {
+        return docEl.requestFullscreen();
+      } else if (docEl.webkitRequestFullscreen) {
+        return docEl.webkitRequestFullscreen();
+      } else if (docEl.mozRequestFullScreen) {
+        return docEl.mozRequestFullScreen();
+      } else if (docEl.msRequestFullscreen) {
+        return docEl.msRequestFullscreen();
+      }
+    }
+
+    async exitFullscreen() {
+      if (document.exitFullscreen) {
+        return document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        return document.webkitExitFullscreen();
+      } else if (document.mozCancelFullScreen) {
+        return document.mozCancelFullScreen();
+      } else if (document.msExitFullscreen) {
+        return document.msExitFullscreen();
+      }
+    }
+
+    async toggle() {
+      try {
+        if (this.isFullscreen()) {
+          await this.exitFullscreen();
+        } else {
+          await this.requestFullscreen();
+        }
+      } catch (err) {
+        console.warn('Fullscreen toggle:', err);
+      }
+    }
+
+    updateUI() {
+      if (!this.btn) return;
+      const isFs = this.isFullscreen();
+      const icon = this.btn.querySelector('.icon-fullscreen');
+      if (icon) {
+        icon.textContent = isFs ? '🗗' : '⛶';
+      }
+      this.btn.title = isFs ? 'Exit Fullscreen' : 'Enter Fullscreen';
+    }
+  }
+
+  // ==========================================================================
   // 4. Main Chess Application Controller
   // ==========================================================================
   class ChessApp {
@@ -482,6 +598,7 @@
         turnBannerText: document.getElementById('turn-banner-text'),
 
         // Controls
+        btnFullscreen: document.getElementById('btn-fullscreen'),
         btnSoundToggle: document.getElementById('btn-sound-toggle'),
         selectTheme: document.getElementById('select-theme'),
         selectDifficulty: document.getElementById('select-difficulty'),
@@ -551,6 +668,9 @@
     }
 
     setupEventListeners() {
+      // Fullscreen Controller
+      this.fullscreen = new FullscreenManager(this.dom.btnFullscreen);
+
       // Load saved preferences
       try {
         const savedTheme = localStorage.getItem('chess_theme');
