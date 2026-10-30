@@ -394,6 +394,10 @@ function resumeGameFlowIfNeeded() {
 }
 
 function toggleStartPause() {
+  ensureAudio();
+  if (audioCtx && audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
   requestFullscreenSafe();
   if (state.gameOver) return;
 
@@ -754,240 +758,219 @@ function playWinSound() {
 }
 
 // ---------- Background Music (BGM) Engine ----------
-const NOTE = {
-  C2: 65.41, D2: 73.42, E2: 82.41, F2: 87.31, G2: 98.00, A2: 110.00, B2: 123.47,
-  C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.00, A3: 220.00, B3: 246.94,
-  C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, A4: 440.00, B4: 493.88,
-  C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.00
-};
-
-const BGM_BARS = [
-  // Bar 0: C Major
-  { bass: [NOTE.C2, null, null, null, NOTE.G2, null, null, null],
-    chord: [[NOTE.C4, NOTE.E4], null, [NOTE.E4, NOTE.G4], null, [NOTE.C4, NOTE.G4], null, [NOTE.E4, NOTE.C5], null],
-    melody: [NOTE.C5, null, NOTE.E5, null, NOTE.G4, null, NOTE.E5, null] },
-  // Bar 1: G Major
-  { bass: [NOTE.G2, null, null, null, NOTE.D3, null, null, null],
-    chord: [[NOTE.B3, NOTE.D4], null, [NOTE.D4, NOTE.G4], null, [NOTE.B3, NOTE.G4], null, [NOTE.D4, NOTE.B4], null],
-    melody: [NOTE.D5, null, NOTE.B4, null, NOTE.G4, null, NOTE.A4, null] },
-  // Bar 2: A Minor
-  { bass: [NOTE.A2, null, null, null, NOTE.E3, null, null, null],
-    chord: [[NOTE.A3, NOTE.C4], null, [NOTE.C4, NOTE.E4], null, [NOTE.A3, NOTE.E4], null, [NOTE.C4, NOTE.A4], null],
-    melody: [NOTE.C5, null, NOTE.A4, null, NOTE.E5, null, NOTE.C5, null] },
-  // Bar 3: F Major
-  { bass: [NOTE.F2, null, null, null, NOTE.C3, null, null, null],
-    chord: [[NOTE.A3, NOTE.C4], null, [NOTE.C4, NOTE.F4], null, [NOTE.A3, NOTE.F4], null, [NOTE.C4, NOTE.A4], null],
-    melody: [NOTE.D5, null, NOTE.C5, null, NOTE.A4, null, NOTE.G4, null] },
-  // Bar 4: C Major
-  { bass: [NOTE.C2, null, null, null, NOTE.G2, null, null, null],
-    chord: [[NOTE.C4, NOTE.E4], null, [NOTE.E4, NOTE.G4], null, [NOTE.C4, NOTE.G4], null, [NOTE.E4, NOTE.C5], null],
-    melody: [NOTE.E5, null, NOTE.G5, null, NOTE.E5, null, NOTE.D5, null] },
-  // Bar 5: E Minor
-  { bass: [NOTE.E2, null, null, null, NOTE.B2, null, null, null],
-    chord: [[NOTE.G3, NOTE.B3], null, [NOTE.B3, NOTE.E4], null, [NOTE.G3, NOTE.E4], null, [NOTE.B3, NOTE.G4], null],
-    melody: [NOTE.B4, null, NOTE.G4, null, NOTE.E4, null, NOTE.G4, null] },
-  // Bar 6: F Major
-  { bass: [NOTE.F2, null, null, null, NOTE.C3, null, null, null],
-    chord: [[NOTE.A3, NOTE.C4], null, [NOTE.C4, NOTE.F4], null, [NOTE.A3, NOTE.F4], null, [NOTE.C4, NOTE.A4], null],
-    melody: [NOTE.A4, null, NOTE.C5, null, NOTE.D5, null, NOTE.E5, null] },
-  // Bar 7: G Major
-  { bass: [NOTE.G2, null, null, null, NOTE.D3, null, null, null],
-    chord: [[NOTE.B3, NOTE.D4], null, [NOTE.D4, NOTE.G4], null, [NOTE.B3, NOTE.G4], null, [NOTE.D4, NOTE.B4], null],
-    melody: [NOTE.D5, null, NOTE.B4, null, NOTE.G4, null, NOTE.D4, null] }
-];
-
+let bgmAudioBuffer = null;
+let bgmSourceNode = null;
 let bgmGainNode = null;
-let bgmFilterNode = null;
-let bgmTimer = null;
-let bgmCurrentStep = 0;
-let bgmPlaying = false;
-let bgmMuted = (localStorage.getItem("ludo_bgm_muted") === "1");
+let bgmStartTime = 0;
+let bgmPauseOffset = 0;
+let bgmIsPlaying = false;
+let bgmMuted = false;
 
-function ensureBgmNodes() {
+function getBgmBuffer() {
   ensureAudio();
-  if (!audioCtx) return;
-  if (!bgmGainNode) {
-    bgmGainNode = audioCtx.createGain();
-    const initialVol = bgmMuted ? 0.0001 : 0.045;
-    bgmGainNode.gain.setValueAtTime(initialVol, audioCtx.currentTime);
+  if (!audioCtx) return null;
+  if (!bgmAudioBuffer) {
+    const sampleRate = audioCtx.sampleRate || 44100;
+    const totalSeconds = 16.0;
+    const totalSamples = Math.floor(sampleRate * totalSeconds);
+    const data = new Float32Array(totalSamples);
+    const beatSec = 0.5;
 
-    bgmFilterNode = audioCtx.createBiquadFilter();
-    bgmFilterNode.type = "lowpass";
-    bgmFilterNode.frequency.setValueAtTime(1050, audioCtx.currentTime);
-
-    bgmFilterNode.connect(bgmGainNode);
-    bgmGainNode.connect(audioCtx.destination);
-  }
-}
-
-function playBgmNote(freq, duration = 0.16, type = "triangle", gainLevel = 0.03) {
-  if (!audioCtx || bgmMuted || !bgmFilterNode) return;
-  try {
-    const osc = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-
-    const now = audioCtx.currentTime;
-    g.gain.setValueAtTime(0.0001, now);
-    g.gain.linearRampToValueAtTime(gainLevel, now + 0.015);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
-    osc.connect(g);
-    g.connect(bgmFilterNode);
-    osc.start(now);
-    osc.stop(now + duration + 0.03);
-  } catch (e) {
-    // Ignore audio context errors
-  }
-}
-
-function tickBgm() {
-  if (!bgmPlaying || !audioCtx) return;
-  const barIndex = Math.floor(bgmCurrentStep / 8) % BGM_BARS.length;
-  const stepInBar = bgmCurrentStep % 8;
-  const bar = BGM_BARS[barIndex];
-
-  // Bass line
-  if (bar.bass[stepInBar]) {
-    playBgmNote(bar.bass[stepInBar], 0.28, "triangle", 0.045);
-  }
-
-  // Chords
-  if (bar.chord[stepInBar]) {
-    for (const freq of bar.chord[stepInBar]) {
-      playBgmNote(freq, 0.22, "sine", 0.022);
+    function addNote(freq, startSec, durSec, vol, type) {
+      const startIdx = Math.floor(startSec * sampleRate);
+      const endIdx = Math.min(totalSamples, Math.floor((startSec + durSec) * sampleRate));
+      for (let i = startIdx; i < endIdx; i++) {
+        const t = (i - startIdx) / sampleRate;
+        const env = t < 0.015 ? (t / 0.015) : Math.max(0, 1 - (t - 0.015) / (durSec - 0.015));
+        let s = 0;
+        if (type === 'sine') {
+          s = Math.sin(2 * Math.PI * freq * t);
+        } else if (type === 'triangle') {
+          const p = (freq * t) % 1;
+          s = 4 * Math.abs(p - 0.5) - 1;
+        }
+        data[i] += s * env * vol;
+      }
     }
-  } else {
-    // Soft off-beat arpeggio
-    const prevChord = bar.chord[stepInBar - 1];
-    if (prevChord && prevChord.length > 1) {
-      const arpFreq = prevChord[stepInBar % 2];
-      if (arpFreq) playBgmNote(arpFreq * 2, 0.1, "sine", 0.012);
+
+    function addKick(startSec) {
+      const startIdx = Math.floor(startSec * sampleRate);
+      const durSec = 0.09;
+      const endIdx = Math.min(totalSamples, Math.floor((startSec + durSec) * sampleRate));
+      for (let i = startIdx; i < endIdx; i++) {
+        const t = (i - startIdx) / sampleRate;
+        const f = 130 * (1 - t / durSec) + 40;
+        const env = Math.max(0, 1 - t / durSec);
+        data[i] += Math.sin(2 * Math.PI * f * t) * env * 0.16;
+      }
     }
-  }
 
-  // Lead melody
-  if (bar.melody[stepInBar]) {
-    playBgmNote(bar.melody[stepInBar], 0.20, "triangle", 0.035);
-  }
+    function addSnare(startSec) {
+      const startIdx = Math.floor(startSec * sampleRate);
+      const durSec = 0.06;
+      const endIdx = Math.min(totalSamples, Math.floor((startSec + durSec) * sampleRate));
+      for (let i = startIdx; i < endIdx; i++) {
+        const t = (i - startIdx) / sampleRate;
+        const env = Math.max(0, 1 - t / durSec);
+        data[i] += (Math.random() * 2 - 1) * env * 0.06;
+      }
+    }
 
-  bgmCurrentStep = (bgmCurrentStep + 1) % (BGM_BARS.length * 8);
+    function addHat(startSec) {
+      const startIdx = Math.floor(startSec * sampleRate);
+      const durSec = 0.025;
+      const endIdx = Math.min(totalSamples, Math.floor((startSec + durSec) * sampleRate));
+      for (let i = startIdx; i < endIdx; i++) {
+        const t = (i - startIdx) / sampleRate;
+        const env = Math.max(0, 1 - t / durSec);
+        data[i] += (Math.random() * 2 - 1) * env * 0.035;
+      }
+    }
+
+    const BARS = [
+      { bass1: 130.81, bass2: 98.00, chord: [261.63, 329.63, 392.00], melody: [523.25, 659.25, 783.99, 659.25] },
+      { bass1: 98.00, bass2: 146.83, chord: [246.94, 293.66, 392.00], melody: [587.33, 493.88, 392.00, 440.00] },
+      { bass1: 110.00, bass2: 164.81, chord: [220.00, 261.63, 329.63], melody: [523.25, 440.00, 659.25, 523.25] },
+      { bass1: 87.31, bass2: 130.81, chord: [220.00, 261.63, 349.23], melody: [587.33, 523.25, 440.00, 392.00] },
+      { bass1: 130.81, bass2: 164.81, chord: [261.63, 329.63, 392.00], melody: [659.25, 783.99, 880.00, 783.99] },
+      { bass1: 82.41, bass2: 123.47, chord: [196.00, 246.94, 329.63], melody: [659.25, 493.88, 392.00, 329.63] },
+      { bass1: 87.31, bass2: 110.00, chord: [220.00, 261.63, 349.23], melody: [349.23, 440.00, 523.25, 587.33] },
+      { bass1: 98.00, bass2: 123.47, chord: [246.94, 293.66, 392.00], melody: [587.33, 659.25, 587.33, 493.88] }
+    ];
+
+    for (let b = 0; b < 8; b++) {
+      const barSec = b * 4 * beatSec;
+      const bar = BARS[b];
+
+      addKick(barSec + 0 * beatSec);
+      addSnare(barSec + 1 * beatSec);
+      addKick(barSec + 2 * beatSec);
+      addSnare(barSec + 3 * beatSec);
+      for (let h = 0; h < 8; h++) {
+        addHat(barSec + h * 0.25);
+      }
+
+      addNote(bar.bass1, barSec + 0 * beatSec, 0.42, 0.16, 'triangle');
+      addNote(bar.bass2, barSec + 2 * beatSec, 0.42, 0.16, 'triangle');
+
+      for (let c = 0; c < 4; c++) {
+        const cTime = barSec + c * beatSec;
+        addNote(bar.chord[0], cTime, 0.22, 0.045, 'sine');
+        addNote(bar.chord[1], cTime, 0.22, 0.045, 'sine');
+        addNote(bar.chord[2], cTime, 0.22, 0.045, 'sine');
+        addNote(bar.chord[(c + 1) % 3], cTime + 0.25, 0.18, 0.035, 'triangle');
+      }
+
+      for (let m = 0; m < 4; m++) {
+        addNote(bar.melody[m], barSec + m * beatSec, 0.38, 0.09, 'triangle');
+      }
+    }
+
+    let maxAmp = 0;
+    for (let i = 0; i < totalSamples; i++) {
+      const a = Math.abs(data[i]);
+      if (a > maxAmp) maxAmp = a;
+    }
+    if (maxAmp > 0.8) {
+      const norm = 0.8 / maxAmp;
+      for (let i = 0; i < totalSamples; i++) data[i] *= norm;
+    }
+
+    bgmAudioBuffer = audioCtx.createBuffer(1, totalSamples, sampleRate);
+    bgmAudioBuffer.getChannelData(0).set(data);
+  }
+  return bgmAudioBuffer;
 }
 
 function startBgm() {
-  const customAudio = document.getElementById("bgm-audio");
-  if (customAudio && customAudio.src) {
-    customAudio.muted = bgmMuted;
-    customAudio.play().catch(() => {});
-    bgmPlaying = true;
-    updateMusicUI();
-    return;
-  }
-
-  ensureBgmNodes();
-  if (audioCtx && audioCtx.state === "suspended") {
+  ensureAudio();
+  if (!audioCtx) return;
+  if (audioCtx.state === "suspended") {
     audioCtx.resume();
   }
-  if (bgmPlaying) return;
-  bgmPlaying = true;
-  bgmCurrentStep = 0;
-  if (bgmGainNode && audioCtx) {
-    const targetGain = bgmMuted ? 0.0001 : 0.045;
-    bgmGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-    bgmGainNode.gain.linearRampToValueAtTime(targetGain, audioCtx.currentTime + 0.2);
+
+  if (bgmIsPlaying) return;
+
+  const buffer = getBgmBuffer();
+  if (!buffer) return;
+
+  if (!bgmGainNode) {
+    bgmGainNode = audioCtx.createGain();
+    bgmGainNode.connect(audioCtx.destination);
   }
-  tickBgm();
-  if (bgmTimer) clearInterval(bgmTimer);
-  bgmTimer = setInterval(tickBgm, 160);
+
+  const targetGain = bgmMuted ? 0 : 0.32;
+  bgmGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+  bgmGainNode.gain.setValueAtTime(targetGain, audioCtx.currentTime);
+
+  try {
+    bgmSourceNode = audioCtx.createBufferSource();
+    bgmSourceNode.buffer = buffer;
+    bgmSourceNode.loop = true;
+    bgmSourceNode.connect(bgmGainNode);
+    const offset = (Number.isFinite(bgmPauseOffset) && bgmPauseOffset > 0) ? (bgmPauseOffset % buffer.duration) : 0;
+    bgmSourceNode.start(0, offset);
+    bgmStartTime = audioCtx.currentTime - offset;
+    bgmIsPlaying = true;
+  } catch (err) {
+    console.warn("BGM start error:", err);
+  }
   updateMusicUI();
 }
 
 function pauseBgm() {
-  const customAudio = document.getElementById("bgm-audio");
-  if (customAudio && customAudio.src) {
-    customAudio.pause();
+  if (!bgmIsPlaying) return;
+  if (bgmSourceNode) {
+    if (bgmAudioBuffer) {
+      bgmPauseOffset = (audioCtx.currentTime - bgmStartTime) % bgmAudioBuffer.duration;
+    }
+    try {
+      bgmSourceNode.stop();
+    } catch (e) {}
+    try {
+      bgmSourceNode.disconnect();
+    } catch (e) {}
+    bgmSourceNode = null;
   }
-
-  if (!bgmPlaying) return;
-  bgmPlaying = false;
-  if (bgmTimer) {
-    clearInterval(bgmTimer);
-    bgmTimer = null;
-  }
-  if (bgmGainNode && audioCtx) {
-    bgmGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-    bgmGainNode.gain.linearRampToValueAtTime(0.0001, audioCtx.currentTime + 0.15);
-  }
+  bgmIsPlaying = false;
   updateMusicUI();
 }
 
 function resumeBgm() {
-  if (bgmPlaying || !state.gameStarted || state.paused || state.gameOver) return;
-
-  const customAudio = document.getElementById("bgm-audio");
-  if (customAudio && customAudio.src) {
-    customAudio.muted = bgmMuted;
-    customAudio.play().catch(() => {});
-    bgmPlaying = true;
-    updateMusicUI();
-    return;
-  }
-
-  ensureBgmNodes();
-  if (audioCtx && audioCtx.state === "suspended") {
-    audioCtx.resume();
-  }
-  bgmPlaying = true;
-  if (bgmGainNode && audioCtx) {
-    const targetGain = bgmMuted ? 0.0001 : 0.045;
-    bgmGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-    bgmGainNode.gain.linearRampToValueAtTime(targetGain, audioCtx.currentTime + 0.2);
-  }
-  tickBgm();
-  if (bgmTimer) clearInterval(bgmTimer);
-  bgmTimer = setInterval(tickBgm, 160);
-  updateMusicUI();
+  if (bgmIsPlaying || !state.gameStarted || state.paused || state.gameOver) return;
+  startBgm();
 }
 
 function stopBgm() {
-  const customAudio = document.getElementById("bgm-audio");
-  if (customAudio && customAudio.src) {
-    customAudio.pause();
-    customAudio.currentTime = 0;
+  if (bgmSourceNode) {
+    try {
+      bgmSourceNode.stop();
+    } catch (e) {}
+    try {
+      bgmSourceNode.disconnect();
+    } catch (e) {}
+    bgmSourceNode = null;
   }
-
-  bgmPlaying = false;
-  if (bgmTimer) {
-    clearInterval(bgmTimer);
-    bgmTimer = null;
-  }
-  bgmCurrentStep = 0;
-  if (bgmGainNode && audioCtx) {
-    bgmGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-    bgmGainNode.gain.linearRampToValueAtTime(0.0001, audioCtx.currentTime + 0.15);
-  }
+  bgmPauseOffset = 0;
+  bgmIsPlaying = false;
   updateMusicUI();
 }
 
 function toggleMusicMute() {
-  ensureBgmNodes();
+  if (!bgmIsPlaying) {
+    bgmMuted = false;
+    startBgm();
+    updateMusicUI();
+    return;
+  }
+
   bgmMuted = !bgmMuted;
   localStorage.setItem("ludo_bgm_muted", bgmMuted ? "1" : "0");
 
-  const customAudio = document.getElementById("bgm-audio");
-  if (customAudio && customAudio.src) {
-    customAudio.muted = bgmMuted;
-  }
-
   if (bgmGainNode && audioCtx) {
-    const now = audioCtx.currentTime;
-    bgmGainNode.gain.cancelScheduledValues(now);
-    bgmGainNode.gain.linearRampToValueAtTime(bgmMuted ? 0.0001 : 0.045, now + 0.1);
-  }
-
-  if (!bgmMuted && state.gameStarted && !state.paused && !state.gameOver && !bgmPlaying) {
-    startBgm();
+    const targetGain = bgmMuted ? 0 : 0.32;
+    bgmGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+    bgmGainNode.gain.setValueAtTime(targetGain, audioCtx.currentTime);
   }
   updateMusicUI();
 }
@@ -1004,7 +987,7 @@ function updateMusicUI() {
     musicOffIcon.classList.toggle("hidden", !isMuted);
   }
   musicBtn.classList.toggle("muted", isMuted);
-  musicBtn.classList.toggle("active", bgmPlaying && !isMuted);
+  musicBtn.classList.toggle("active", bgmIsPlaying && !isMuted);
   musicBtn.setAttribute("aria-label", isMuted ? "Unmute Background Music" : "Mute Background Music");
   musicBtn.title = isMuted ? "Unmute Background Music" : "Mute Background Music";
 }
@@ -1361,6 +1344,9 @@ function advanceTurn() {
 }
 
 async function rollDice(trigger = "human") {
+  if (!state.gameStarted) {
+    toggleStartPause();
+  }
   if (trigger === "human") {
     requestFullscreenSafe();
   }
