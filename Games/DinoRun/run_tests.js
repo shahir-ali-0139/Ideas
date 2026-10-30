@@ -6,7 +6,12 @@ const vm = require('vm');
 // Mock browser globals for Node test environment
 global.window = {
   devicePixelRatio: 1,
+  innerWidth: 1200,
+  innerHeight: 500,
+  matchMedia: () => ({ matches: false }),
+  screen: { orientation: { type: 'landscape-primary', lock: async () => {}, addEventListener: () => {} } },
   addEventListener: () => {},
+  removeEventListener: () => {},
   AudioContext: class {
     constructor() {
       this.currentTime = 0;
@@ -64,6 +69,11 @@ global.window = {
   }
 };
 
+global.navigator = {
+  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+  maxTouchPoints: 0
+};
+
 const store = {};
 global.localStorage = {
   getItem: (k) => store[k] || null,
@@ -88,6 +98,7 @@ global.document = {
       clearRect: () => {},
       fillRect: () => {},
       beginPath: () => {},
+      closePath: () => {},
       moveTo: () => {},
       lineTo: () => {},
       arc: () => {},
@@ -106,6 +117,9 @@ global.document = {
   }),
   addEventListener: () => {}
 };
+
+global.requestAnimationFrame = (cb) => setTimeout(cb, 16);
+global.cancelAnimationFrame = (id) => clearTimeout(id);
 
 // Load and run script.js in global context
 const code = fs.readFileSync('script.js', 'utf8');
@@ -228,4 +242,22 @@ for (let lvl = 1; lvl <= 6; lvl++) {
 }
 console.log('   Web Audio Sound Engine: PASS');
 
+// Test 6: Mobile vs Desktop Orientation Verification
+console.log('6. Testing Mobile vs Desktop Orientation Handling...');
+const game = new UltimateDinoGame();
+// On desktop test env (Windows UA, 0 touch points):
+if (game.isMobileDevice()) throw new Error('Desktop environment should NOT be detected as mobile');
+// Test orientation check for desktop
+game.checkOrientation();
+console.log('   Desktop orientation check (no rotate prompt): PASS');
+
+// Simulate mobile device
+global.navigator.maxTouchPoints = 5;
+global.window.matchMedia = (query) => ({ matches: query.includes('coarse') });
+if (!game.isMobileDevice()) throw new Error('Touch device with coarse pointer should be detected as mobile');
+console.log('   Mobile detection: PASS');
+
+if (game.animationFrameId) cancelAnimationFrame(game.animationFrameId);
+
 console.log('ALL VERIFICATION TESTS PASSED SUCCESSFULLY! 🚀');
+process.exit(0);

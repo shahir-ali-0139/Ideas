@@ -106,6 +106,23 @@
           </button>
         </div>
 
+        <!-- Mobile Landscape Orientation Prompt Overlay (Mobile Only) -->
+        <div id="screen-rotate-device" class="rotate-device-overlay hidden">
+          <div class="rotate-card glass-panel">
+            <div class="phone-rotate-anim">
+              <svg class="phone-svg" viewBox="0 0 100 100">
+                <rect x="28" y="14" width="44" height="72" rx="8" fill="none" stroke="#22c55e" stroke-width="3.5"/>
+                <line x1="42" y1="22" x2="58" y2="22" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round"/>
+                <circle cx="50" cy="76" r="3.5" fill="#22c55e"/>
+              </svg>
+              <div class="rotate-arrow-badge">🔄</div>
+            </div>
+            <h2>PLEASE ROTATE DEVICE</h2>
+            <p>Ultimate Dino Run is optimized for <strong>Landscape Mode</strong> on mobile phones.</p>
+            <button id="btn-dismiss-rotate" class="btn btn-secondary btn-sm">Play in Portrait</button>
+          </div>
+        </div>
+
         <!-- Screen 1: MAIN MENU -->
         <div id="screen-main-menu" class="game-overlay">
           <div class="menu-card glass-panel">

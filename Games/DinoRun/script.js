@@ -2088,6 +2088,7 @@ class UltimateDinoGame {
     this.countdownValue = 3;
     this.countdownTimer = null;
     this.animationFrameId = null;
+    this.orientationDismissed = false;
 
     // Floating Bonus Layer
     this.floatingLayer = document.getElementById('floating-bonuses-layer');
@@ -2096,6 +2097,7 @@ class UltimateDinoGame {
     this.initDOMElements();
     this.bindEvents();
     this.updateUI();
+    this.checkOrientation();
 
     // Initial Screen
     this.showScreen('screen-main-menu');
@@ -2201,6 +2203,16 @@ class UltimateDinoGame {
     // Mobile Touch Buttons
     this.btnTouchJump = document.getElementById('btn-touch-jump');
     this.btnTouchDuck = document.getElementById('btn-touch-duck');
+
+    // Mobile Rotate Device Overlay
+    this.rotateOverlay = document.getElementById('screen-rotate-device');
+    this.btnDismissRotate = document.getElementById('btn-dismiss-rotate');
+    if (this.btnDismissRotate) {
+      this.btnDismissRotate.addEventListener('click', () => {
+        this.orientationDismissed = true;
+        if (this.rotateOverlay) this.rotateOverlay.classList.add('hidden');
+      });
+    }
 
     // Fill settings inputs from stored settings
     const s = StorageManager.getSettings();
@@ -2517,8 +2529,29 @@ class UltimateDinoGame {
       document.addEventListener(ev, () => {
         this.updateFullscreenIcons();
         this.resizeCanvas();
+        this.checkOrientation();
       });
     });
+
+    // --- Screen Orientation & Resize Listeners ---
+    window.addEventListener('resize', () => {
+      this.resizeCanvas();
+      this.checkOrientation();
+    });
+
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => {
+        this.resizeCanvas();
+        this.checkOrientation();
+      }, 150);
+    });
+
+    if (window.screen && window.screen.orientation) {
+      window.screen.orientation.addEventListener('change', () => {
+        this.resizeCanvas();
+        this.checkOrientation();
+      });
+    }
   }
 
   applySettingsFromUI() {
@@ -2557,8 +2590,34 @@ class UltimateDinoGame {
     }
   }
 
-  enterFullscreen() {
-    const docEl = document.documentElement;
+  isMobileDevice() {
+    const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    const isMobileUA = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|webOS/i.test(navigator.userAgent || '');
+    const isSmallTouch = hasTouch && window.matchMedia('(pointer: coarse)').matches;
+    return isMobileUA || isSmallTouch;
+  }
+
+  checkOrientation() {
+    // Desktop users are NEVER prompted or forced
+    if (!this.isMobileDevice()) {
+      if (this.rotateOverlay) this.rotateOverlay.classList.add('hidden');
+      return;
+    }
+
+    const isPortrait = window.innerHeight > window.innerWidth ||
+                       (window.screen && window.screen.orientation && window.screen.orientation.type && window.screen.orientation.type.includes('portrait'));
+
+    if (isPortrait && !this.orientationDismissed) {
+      if (this.rotateOverlay) this.rotateOverlay.classList.remove('hidden');
+    } else {
+      if (this.rotateOverlay) this.rotateOverlay.classList.add('hidden');
+    }
+  }
+
+  async enterFullscreen() {
+    const docEl = document.documentElement || document.body;
+    if (!docEl) return Promise.resolve();
+
     const requestFs = docEl.requestFullscreen ||
                       docEl.webkitRequestFullscreen ||
                       docEl.mozRequestFullScreen ||
@@ -2570,10 +2629,23 @@ class UltimateDinoGame {
                  document.msFullscreenElement;
 
     if (requestFs && !isFs) {
-      return requestFs.call(docEl).catch(() => {
+      try {
+        await requestFs.call(docEl);
+      } catch (e) {
         // Silently catch browser policy rejections before user gesture
-      });
+      }
     }
+
+    // Automatically lock mobile devices to landscape orientation in fullscreen
+    if (this.isMobileDevice() && window.screen && window.screen.orientation && window.screen.orientation.lock) {
+      try {
+        await window.screen.orientation.lock('landscape');
+      } catch (e) {
+        // Ignored on browsers without Screen Orientation Lock permission
+      }
+    }
+
+    this.checkOrientation();
     return Promise.resolve();
   }
 
