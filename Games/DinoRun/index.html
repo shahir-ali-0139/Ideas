@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Ultimate Dino Run - Modern, responsive, multi-level endless runner arcade browser game.">
+  <title>Ultimate Dino Run Advanced Browser Game</title>
+  
+  <!-- Google Fonts for Arcade & Modern UI -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Press+Start+2P&family=Chakra+Petch:wght@500;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-app">
+    <!-- Main Game Frame -->
+    <div id="game-container">
+      
+      <!-- Screen Shake & Canvas Wrapper -->
+      <div id="canvas-wrapper">
+        <canvas id="game-canvas"></canvas>
+
+        <!-- In-Game HUD Overlay (Visible during PLAYING & COUNTDOWN) -->
+        <div id="hud" class="overlay-hud hidden">
+          <div class="hud-left">
+            <div id="level-badge" class="hud-pill">
+              <span id="level-icon">🏜️</span>
+              <span id="level-name">Desert</span>
+              <span id="level-num">LVL 1</span>
+            </div>
+            <div id="speed-meter" class="hud-pill" title="Current Speed Multiplier">
+              <span class="speed-icon">⚡</span>
+              <span id="speed-value">1.0x</span>
+            </div>
+          </div>
+
+          <div class="hud-right">
+            <div class="score-display">
+              <div class="hi-score-box">
+                <span class="score-lbl">HI</span>
+                <span id="hi-score-hud">00000</span>
+              </div>
+              <div class="curr-score-box">
+                <span id="current-score-hud">00000</span>
+              </div>
+            </div>
+            
+            <div class="hud-controls">
+              <button id="btn-audio-toggle" class="icon-btn" title="Toggle Sound (M)" aria-label="Toggle Sound">
+                <svg id="icon-sound-on" class="svg-icon" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                </svg>
+                <svg id="icon-sound-off" class="svg-icon hidden" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+                </svg>
+              </button>
+
+              <button id="btn-pause" class="icon-btn" title="Pause Game (P / Esc)" aria-label="Pause Game">
+                <svg class="svg-icon" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                </svg>
+              </button>
+
+              <button id="btn-fullscreen" class="icon-btn" title="Toggle Fullscreen" aria-label="Toggle Fullscreen">
+                <svg class="svg-icon" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Level Transition & Milestone Toast -->
+        <div id="milestone-banner" class="milestone-toast hidden">
+          <div class="milestone-content">
+            <span id="milestone-icon">🎉</span>
+            <div class="milestone-text">
+              <h3 id="milestone-title">LEVEL UP!</h3>
+              <p id="milestone-desc">Entering Sunset Environment</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Floating Points Container -->
+        <div id="floating-bonuses-layer"></div>
+
+        <!-- Countdown Overlay -->
+        <div id="countdown-overlay" class="game-overlay hidden">
+          <div id="countdown-text" class="countdown-pulse">3</div>
+        </div>
+
+        <!-- Mobile Touch Controls Overlay -->
+        <div id="mobile-controls" class="mobile-controls-layer">
+          <button id="btn-touch-duck" class="touch-btn touch-btn-duck" aria-label="Duck">
+            <span class="touch-icon">▼</span>
+            <span class="touch-label">DUCK</span>
+          </button>
+          <button id="btn-touch-jump" class="touch-btn touch-btn-jump" aria-label="Jump">
+            <span class="touch-icon">▲</span>
+            <span class="touch-label">JUMP</span>
+          </button>
+        </div>
+
+        <!-- Screen 1: MAIN MENU -->
+        <div id="screen-main-menu" class="game-overlay">
+          <div class="menu-card glass-panel">
+            <div class="title-container">
+              <div class="dino-mascot-badge">
+                <svg viewBox="0 0 100 100" class="mascot-svg">
+                  <!-- Vector cute Dino Head & Body -->
+                  <defs>
+                    <linearGradient id="dinoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#4ade80"/>
+                      <stop offset="100%" stop-color="#16a34a"/>
+                    </linearGradient>
+                  </defs>
+                  <path d="M 50 15 L 75 15 C 82 15, 88 20, 88 28 L 88 42 C 88 48, 82 52, 75 52 L 68 52 L 68 58 L 74 58 L 74 65 L 60 65 L 56 68 L 56 80 L 46 80 L 46 68 L 40 68 L 38 80 L 28 80 L 30 62 C 22 58, 16 50, 16 40 L 26 40 C 26 46, 30 50, 36 50 L 40 50 L 40 25 C 40 19, 45 15, 50 15 Z" fill="url(#dinoGrad)"/>
+                  <circle cx="70" cy="25" r="4" fill="#ffffff"/>
+                  <circle cx="72" cy="25" r="2" fill="#0f172a"/>
+                  <rect x="74" y="38" width="10" height="4" rx="2" fill="#ffffff"/>
+                </svg>
+              </div>
+              <h1 class="main-title">ULTIMATE<span class="accent-text">DINO</span>RUN</h1>
+              <p class="tagline">The Modern Chrome Dino Arcade Experience</p>
+            </div>
+
+            <!-- Best Score Preview Card -->
+            <div class="high-score-card">
+              <span class="trophy-icon">🏆</span>
+              <div class="trophy-info">
+                <span class="trophy-label">BEST RECORD</span>
+                <span id="menu-hi-score" class="trophy-score">00000</span>
+              </div>
+            </div>
+
+            <!-- Menu Action Buttons -->
+            <div class="menu-actions">
+              <button id="btn-play-game" class="btn btn-primary pulse-btn">
+                <span class="btn-icon">▶</span> PLAY GAME
+              </button>
+              <div class="menu-sub-row">
+                <button id="btn-open-settings" class="btn btn-secondary">
+                  <span class="btn-icon">⚙️</span> Settings
+                </button>
+                <button id="btn-open-instructions" class="btn btn-secondary">
+                  <span class="btn-icon">📖</span> How to Play
+                </button>
+              </div>
+            </div>
+
+            <!-- Quick Control Guide Footer -->
+            <div class="menu-footer">
+              <div class="key-hint"><span class="kbd">SPACE</span> / <span class="kbd">▲</span> Jump</div>
+              <div class="key-hint"><span class="kbd">▼</span> Duck & Slide</div>
+              <div class="key-hint"><span class="kbd">M</span> Mute</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Screen 2: PAUSE MENU -->
+        <div id="screen-pause" class="game-overlay hidden">
+          <div class="pause-card glass-panel">
+            <div class="modal-header">
+              <h2>GAME PAUSED</h2>
+              <p>Take a breath, Dino!</p>
+            </div>
+
+            <div class="pause-stats">
+              <div class="stat-item">
+                <span class="stat-label">CURRENT SCORE</span>
+                <span id="pause-score-val" class="stat-value">00000</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">CURRENT LEVEL</span>
+                <span id="pause-level-val" class="stat-value">Desert</span>
+              </div>
+            </div>
+
+            <div class="pause-actions">
+              <button id="btn-resume" class="btn btn-primary">
+                <span class="btn-icon">▶</span> RESUME
+              </button>
+              <button id="btn-restart-paused" class="btn btn-secondary">
+                <span class="btn-icon">🔄</span> RESTART
+              </button>
+              <button id="btn-settings-paused" class="btn btn-secondary">
+                <span class="btn-icon">⚙️</span> SETTINGS
+              </button>
+              <button id="btn-quit-to-menu" class="btn btn-outline">
+                <span class="btn-icon">🏠</span> MAIN MENU
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Screen 3: GAME OVER -->
+        <div id="screen-game-over" class="game-overlay hidden">
+          <div class="game-over-card glass-panel">
+            <div class="game-over-header">
+              <div id="new-high-score-badge" class="badge-new-record hidden">
+                ✨ NEW HIGH SCORE! ✨
+              </div>
+              <h2 class="game-over-title">GAME OVER</h2>
+            </div>
+
+            <div class="game-over-results">
+              <div class="result-highlight">
+                <span class="result-lbl">FINAL SCORE</span>
+                <span id="go-final-score" class="result-big-score">00000</span>
+              </div>
+
+              <div class="results-grid">
+                <div class="grid-stat">
+                  <span class="g-lbl">BEST SCORE</span>
+                  <span id="go-best-score" class="g-val">00000</span>
+                </div>
+                <div class="grid-stat">
+                  <span class="g-lbl">LEVEL REACHED</span>
+                  <span id="go-level-reached" class="g-val">Level 1</span>
+                </div>
+                <div class="grid-stat">
+                  <span class="g-lbl">OBSTACLES DODGED</span>
+                  <span id="go-obstacles-cleared" class="g-val">0</span>
+                </div>
+                <div class="grid-stat">
+                  <span class="g-lbl">BONUS POINTS</span>
+                  <span id="go-bonus-points" class="g-val">+0</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="game-over-actions">
+              <button id="btn-retry" class="btn btn-primary pulse-btn">
+                <span class="btn-icon">🔄</span> PLAY AGAIN <span class="key-shortcut">(Space)</span>
+              </button>
+              <button id="btn-go-menu" class="btn btn-secondary">
+                <span class="btn-icon">🏠</span> MAIN MENU
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal: SETTINGS -->
+        <div id="modal-settings" class="game-overlay hidden">
+          <div class="settings-card glass-panel">
+            <div class="modal-top">
+              <h3>SETTINGS</h3>
+              <button id="btn-close-settings" class="btn-close" aria-label="Close Settings">✕</button>
+            </div>
+
+            <div class="settings-body">
+              <!-- Audio Section -->
+              <div class="setting-group">
+                <h4>AUDIO</h4>
+                
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-title">Background Music</span>
+                    <span class="setting-desc">Adaptive dynamic music per level</span>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="chk-music" checked>
+                    <span class="slider"></span>
+                  </label>
+                </div>
+
+                <div class="setting-row slider-row">
+                  <span class="setting-title">Music Volume</span>
+                  <div class="range-wrap">
+                    <input type="range" id="rng-music-vol" min="0" max="100" value="60">
+                    <span id="val-music-vol" class="range-num">60%</span>
+                  </div>
+                </div>
+
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-title">Sound Effects (SFX)</span>
+                    <span class="setting-desc">Jumping, sliding, impacts, notifications</span>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="chk-sfx" checked>
+                    <span class="slider"></span>
+                  </label>
+                </div>
+
+                <div class="setting-row slider-row">
+                  <span class="setting-title">SFX Volume</span>
+                  <div class="range-wrap">
+                    <input type="range" id="rng-sfx-vol" min="0" max="100" value="80">
+                    <span id="val-sfx-vol" class="range-num">80%</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Gameplay / Visuals Section -->
+              <div class="setting-group">
+                <h4>GAMEPLAY & VISUALS</h4>
+
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-title">Difficulty Preset</span>
+                    <span class="setting-desc">Adjust starting speed and ramp-up rate</span>
+                  </div>
+                  <select id="sel-difficulty" class="select-input">
+                    <option value="casual">Casual (Relaxed)</option>
+                    <option value="standard" selected>Standard (Balanced)</option>
+                    <option value="hardcore">Hardcore (Fast & Fierce)</option>
+                  </select>
+                </div>
+
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-title">Screen Shake</span>
+                    <span class="setting-desc">Impact shake on collision</span>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="chk-shake" checked>
+                    <span class="slider"></span>
+                  </label>
+                </div>
+
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-title">Particles & Dust</span>
+                    <span class="setting-desc">Puffs, sparkles and confetti</span>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="chk-particles" checked>
+                    <span class="slider"></span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Data Management -->
+              <div class="setting-group danger-group">
+                <h4>RECORD & DATA</h4>
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-title">Reset High Score</span>
+                    <span class="setting-desc">Permanently erase saved high score</span>
+                  </div>
+                  <button id="btn-reset-high-score" class="btn btn-danger">Reset Record</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button id="btn-save-settings" class="btn btn-primary">Done</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal: HOW TO PLAY -->
+        <div id="modal-instructions" class="game-overlay hidden">
+          <div class="instructions-card glass-panel">
+            <div class="modal-top">
+              <h3>HOW TO PLAY</h3>
+              <button id="btn-close-instructions" class="btn-close" aria-label="Close Instructions">✕</button>
+            </div>
+
+            <div class="instructions-body">
+              <div class="guide-section">
+                <h4>🎮 CONTROLS</h4>
+                <div class="controls-grid">
+                  <div class="ctrl-card">
+                    <div class="ctrl-keys"><span class="kbd">SPACE</span> / <span class="kbd">▲</span> / <span class="kbd">W</span></div>
+                    <div class="ctrl-action">Jump</div>
+                    <div class="ctrl-tip">Tap lightly for low jump, hold for higher jump!</div>
+                  </div>
+                  <div class="ctrl-card">
+                    <div class="ctrl-keys"><span class="kbd">▼</span> / <span class="kbd">S</span></div>
+                    <div class="ctrl-action">Duck & Slide</div>
+                    <div class="ctrl-tip">Duck under mid & high pterodactyls and lasers!</div>
+                  </div>
+                  <div class="ctrl-card">
+                    <div class="ctrl-keys"><span class="kbd">▼</span> In Mid-Air</div>
+                    <div class="ctrl-action">Fast Drop</div>
+                    <div class="ctrl-tip">Hurtle back to the ground quickly to dodge tricky sequences!</div>
+                  </div>
+                  <div class="ctrl-card">
+                    <div class="ctrl-keys">📱 Touch / Click</div>
+                    <div class="ctrl-action">Mobile Controls</div>
+                    <div class="ctrl-tip">Use on-screen buttons or tap to jump and swipe down to duck.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="guide-section">
+                <h4>🌵 OBSTACLES & SCORING</h4>
+                <ul class="guide-list">
+                  <li><strong>Cacti:</strong> Small, large, and clustered. Leap over them cleanly!</li>
+                  <li><strong>Flying Pterodactyls (Birds):</strong> Appear at 3 distinct heights:
+                    <br>• <em>Low Birds:</em> Jump over them!
+                    <br>• <em>Mid Birds:</em> Duck and slide underneath!
+                    <br>• <em>High Birds:</em> Fly harmlessly overhead!
+                  </li>
+                  <li><strong>Cyber Drones & Laser Obstacles:</strong> Watch for glowing hazards in advanced levels!</li>
+                  <li><strong>Close Call Bonus:</strong> Clear an obstacle right at the skin of your scales to score an instant <strong>+100 Bonus Points</strong>!</li>
+                </ul>
+              </div>
+
+              <div class="guide-section">
+                <h4>🌍 PROGRESSIVE ENVIRONMENTS</h4>
+                <div class="env-badges">
+                  <span class="env-pill">🏜️ Desert (0-500)</span>
+                  <span class="env-pill">🌆 Sunset (500-1200)</span>
+                  <span class="env-pill">🌙 Night (1200-2200)</span>
+                  <span class="env-pill">🌴 Jungle (2200-3500)</span>
+                  <span class="env-pill">⚡ Cyber World (3500-5000)</span>
+                  <span class="env-pill">🔥 Extreme (5000+)</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button id="btn-instructions-gotit" class="btn btn-primary">LET'S RUN!</button>
+            </div>
+          </div>
+        </div>
+
+      </div> <!-- end #canvas-wrapper -->
+
+    </div> <!-- end #game-container -->
+  </div> <!-- end #game-app -->
+
+  <script src="script.js"></script>
+</body>
+</html>
