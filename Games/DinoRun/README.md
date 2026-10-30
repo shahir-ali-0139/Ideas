@@ -25,8 +25,8 @@ python -m http.server 8080
 | :--- | :--- | :--- | :--- |
 | **Jump** | `SPACE` / `▲` Up Arrow / `W` | Left Click on canvas | Tap canvas / On-screen `[ JUMP ▲ ]` button |
 | **Variable Jump** | Release jump key early for a low hop; hold for full leap | Release click early | Tap lightly / Release touch |
-| **Duck & Slide** | `▼` Down Arrow / `S` | — | Swipe Down / On-screen `[ DUCK ▼ ]` button |
-| **Fast Drop (Stomp)** | `▼` Down Arrow while in mid-air | — | Swipe Down while airborne |
+| **Duck & Slide** | `▼` Down Arrow / `SHIFT` | — | Swipe Down / On-screen `[ DUCK ▼ ]` button |
+| **Fast Drop (Stomp)** | `▼` Down Arrow / `SHIFT` in mid-air | — | Swipe Down while airborne |
 | **Pause / Resume** | `P` / `ESC` | Pause icon button | Pause icon button |
 | **Quick Mute** | `M` | Audio icon button | Audio icon button |
 | **Quick Restart** | `R` (when playing or game over) | — | Retry button |
@@ -109,6 +109,7 @@ No external audio assets or MP3 files needed. The game features an integrated re
 ## 🎨 Visuals & High Performance
 
 - **Procedural Vector Drawing on Canvas:** Crisp, scale-independent rendering of the Dinosaur (with running leg cycle, tail bounce, blinking eyes, ducking posture, teeth, claws, and cyber visor), cacti, birds, drones, and jungle plants.
+- **Mobile Landscape Responsive Architecture:** Automatically prompts mobile users in portrait orientation to rotate their device into landscape for maximum reaction runway, with `screen.orientation.lock('landscape')` integration upon fullscreen. Desktop users are never prompted or disrupted.
 - **High-DPI / Retina Display Support:** Internal canvas backing store scales to `window.devicePixelRatio` for razor-sharp rendering on 4K, Retina, and mobile screens.
 - **Delta-Time Physics:** Frame-rate independent movement calculated using `performance.now()` with delta clamping (max 50ms) to prevent clipping during frame drops.
 - **Particle System:** Running dust puffs, jump bursts, sliding friction streaks, collision debris, and celebratory confetti.
