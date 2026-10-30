@@ -50,29 +50,57 @@ html, body {
   touch-action: manipulation;
 }
 
-/* App Viewport Container */
+/* App Viewport Container - Edge-to-Edge Fullscreen */
 #game-app {
   width: 100vw;
   height: 100vh;
+  width: 100dvw;
+  height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 50% 30%, #1e293b 0%, #090d16 100%);
-  padding: 12px;
+  background-color: var(--bg-dark);
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
 }
 
 /* Game Outer Frame */
 #game-container {
   position: relative;
-  width: 100%;
-  max-width: 1200px;
-  aspect-ratio: 12 / 5; /* 1200 x 500 resolution standard */
-  max-height: calc(100vh - 24px);
+  width: 100vw;
+  height: 100vh;
+  width: 100dvw;
+  height: 100dvh;
+  max-width: 100%;
+  max-height: 100%;
   display: flex;
-  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 1px 1px rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-lg);
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
   overflow: hidden;
   background-color: #0f172a;
+}
+
+/* Native Fullscreen API Styling Support */
+:fullscreen, :-webkit-full-screen {
+  background-color: #000000;
+}
+
+:fullscreen #game-app,
+:-webkit-full-screen #game-app,
+:fullscreen #game-container,
+:-webkit-full-screen #game-container {
+  width: 100vw;
+  height: 100vh;
+  max-width: 100%;
+  max-height: 100%;
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+  border: none;
 }
 
 /* Canvas & Screen Shake Wrapper */

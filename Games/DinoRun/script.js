@@ -2100,6 +2100,9 @@ class UltimateDinoGame {
     // Initial Screen
     this.showScreen('screen-main-menu');
 
+    // Attempt automatic fullscreen on initial visit
+    this.enterFullscreen();
+
     // Start background render loop for menu
     this.startEngineLoop();
   }
@@ -2108,11 +2111,32 @@ class UltimateDinoGame {
     const rect = this.canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
 
+    const w = rect.width || window.innerWidth || 1200;
+    const h = rect.height || window.innerHeight || 500;
+    const aspect = w / (h || 1);
+
+    this.VIRTUAL_HEIGHT = 500;
+    this.VIRTUAL_WIDTH = Math.max(1000, Math.round(this.VIRTUAL_HEIGHT * aspect));
+    this.GROUND_Y = 415;
+
     this.canvas.width = this.VIRTUAL_WIDTH * dpr;
     this.canvas.height = this.VIRTUAL_HEIGHT * dpr;
 
     this.ctx.resetTransform();
     this.ctx.scale(dpr, dpr);
+
+    if (this.bg) {
+      this.bg.width = this.VIRTUAL_WIDTH;
+      this.bg.height = this.VIRTUAL_HEIGHT;
+      this.bg.groundY = this.GROUND_Y;
+    }
+    if (this.obstacles) {
+      this.obstacles.canvasWidth = this.VIRTUAL_WIDTH;
+      this.obstacles.groundY = this.GROUND_Y;
+    }
+    if (this.dino) {
+      this.dino.groundY = this.GROUND_Y;
+    }
   }
 
   initDOMElements() {
@@ -2148,6 +2172,8 @@ class UltimateDinoGame {
     this.iconSoundOn = document.getElementById('icon-sound-on');
     this.iconSoundOff = document.getElementById('icon-sound-off');
     this.btnFullscreen = document.getElementById('btn-fullscreen');
+    this.iconFsEnter = document.getElementById('icon-fs-enter');
+    this.iconFsExit = document.getElementById('icon-fs-exit');
 
     // Modals
     this.modalSettings = document.getElementById('modal-settings');
@@ -2470,6 +2496,29 @@ class UltimateDinoGame {
         this.pauseGame();
       }
     });
+
+    // --- Automatic Fullscreen on First User Interaction ---
+    const triggerAutoFullscreen = () => {
+      this.enterFullscreen();
+      window.removeEventListener('pointerdown', triggerAutoFullscreen, { capture: true });
+      window.removeEventListener('keydown', triggerAutoFullscreen, { capture: true });
+      window.removeEventListener('touchstart', triggerAutoFullscreen, { capture: true });
+      window.removeEventListener('click', triggerAutoFullscreen, { capture: true });
+    };
+
+    window.addEventListener('pointerdown', triggerAutoFullscreen, { capture: true, passive: true });
+    window.addEventListener('keydown', triggerAutoFullscreen, { capture: true, passive: true });
+    window.addEventListener('touchstart', triggerAutoFullscreen, { capture: true, passive: true });
+    window.addEventListener('click', triggerAutoFullscreen, { capture: true, passive: true });
+
+    // --- Fullscreen State Change Listener ---
+    const fsEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
+    fsEvents.forEach(ev => {
+      document.addEventListener(ev, () => {
+        this.updateFullscreenIcons();
+        this.resizeCanvas();
+      });
+    });
   }
 
   applySettingsFromUI() {
@@ -2508,12 +2557,59 @@ class UltimateDinoGame {
     }
   }
 
+  enterFullscreen() {
+    const docEl = document.documentElement;
+    const requestFs = docEl.requestFullscreen ||
+                      docEl.webkitRequestFullscreen ||
+                      docEl.mozRequestFullScreen ||
+                      docEl.msRequestFullscreen;
+
+    const isFs = document.fullscreenElement ||
+                 document.webkitFullscreenElement ||
+                 document.mozFullScreenElement ||
+                 document.msFullscreenElement;
+
+    if (requestFs && !isFs) {
+      return requestFs.call(docEl).catch(() => {
+        // Silently catch browser policy rejections before user gesture
+      });
+    }
+    return Promise.resolve();
+  }
+
   toggleFullscreen() {
-    const container = document.getElementById('game-app');
-    if (!document.fullscreenElement) {
-      container.requestFullscreen().catch(() => {});
+    const isFs = document.fullscreenElement ||
+                 document.webkitFullscreenElement ||
+                 document.mozFullScreenElement ||
+                 document.msFullscreenElement;
+
+    if (!isFs) {
+      this.enterFullscreen();
     } else {
-      document.exitFullscreen().catch(() => {});
+      const exitFs = document.exitFullscreen ||
+                     document.webkitExitFullscreen ||
+                     document.mozCancelFullScreen ||
+                     document.msExitFullscreen;
+      if (exitFs) {
+        exitFs.call(document).catch(() => {});
+      }
+    }
+  }
+
+  updateFullscreenIcons() {
+    const isFs = document.fullscreenElement ||
+                 document.webkitFullscreenElement ||
+                 document.mozFullScreenElement ||
+                 document.msFullscreenElement;
+
+    if (this.iconFsEnter && this.iconFsExit) {
+      if (isFs) {
+        this.iconFsEnter.classList.add('hidden');
+        this.iconFsExit.classList.remove('hidden');
+      } else {
+        this.iconFsEnter.classList.remove('hidden');
+        this.iconFsExit.classList.add('hidden');
+      }
     }
   }
 
@@ -2542,6 +2638,7 @@ class UltimateDinoGame {
 
   // --- Countdown Transition (3, 2, 1, RUN!) ---
   startCountdown() {
+    this.enterFullscreen();
     this.sound.resumeIfNeeded();
     this.showScreen(null); // Hide all screens
     this.closeModal('modal-settings');
