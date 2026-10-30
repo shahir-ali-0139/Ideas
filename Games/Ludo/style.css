@@ -67,6 +67,13 @@ body {
   letter-spacing: -0.01em;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.icon-btn,
 .fullscreen-btn {
   background: #0f172a;
   border: 1px solid #334155;
@@ -83,6 +90,7 @@ body {
   padding: 0;
 }
 
+.icon-btn:hover,
 .fullscreen-btn:hover {
   background: #1e293b;
   border-color: #64748b;
@@ -90,10 +98,22 @@ body {
   transform: translateY(-1px);
 }
 
+.icon-btn:active,
 .fullscreen-btn:active {
   transform: scale(0.96);
 }
 
+.icon-btn.active {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+  color: #60a5fa;
+}
+
+.icon-btn.muted {
+  color: #64748b;
+}
+
+.header-icon,
 .fs-icon {
   display: block;
 }
@@ -1109,6 +1129,7 @@ button:disabled {
     font-size: 1.15rem;
   }
 
+  .icon-btn,
   .fullscreen-btn {
     width: 34px;
     height: 34px;
@@ -1165,6 +1186,7 @@ button:disabled {
     font-size: 1.1rem;
   }
 
+  .icon-btn,
   .fullscreen-btn {
     width: 32px;
     height: 32px;

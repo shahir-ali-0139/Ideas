@@ -416,6 +416,7 @@ function toggleStartPause() {
     state.gameStarted = true;
     state.selectionLocked = true;
     document.body.classList.add('locked');
+    startBgm();
     state.paused = false;
     updateStartToggleButton();
     updateRollControls();
@@ -425,6 +426,7 @@ function toggleStartPause() {
 
   state.paused = !state.paused;
   if (state.paused) {
+    pauseBgm();
     clearRobotTimer();
     state.selectionLocked = false;
     document.body.classList.remove('locked');
@@ -433,6 +435,7 @@ function toggleStartPause() {
   updateStartToggleButton();
   updateRollControls();
   if (!state.paused) {
+    resumeBgm();
     resumeGameFlowIfNeeded();
   }
 }
@@ -482,6 +485,7 @@ function initGame(count = 4, resetScores = false) {
   state.rolling = false;
   state.gameOver = false;
   state.gameStarted = false;
+  stopBgm();
   state.paused = false;
 
   if (resetScores) {
@@ -747,6 +751,262 @@ function playWinSound() {
   beep(600, 0.08, "sine", 0.06);
   setTimeout(() => beep(800, 0.1, "sine", 0.06), 90);
   setTimeout(() => beep(1000, 0.12, "sine", 0.06), 200);
+}
+
+// ---------- Background Music (BGM) Engine ----------
+const NOTE = {
+  C2: 65.41, D2: 73.42, E2: 82.41, F2: 87.31, G2: 98.00, A2: 110.00, B2: 123.47,
+  C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.00, A3: 220.00, B3: 246.94,
+  C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, A4: 440.00, B4: 493.88,
+  C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.00
+};
+
+const BGM_BARS = [
+  // Bar 0: C Major
+  { bass: [NOTE.C2, null, null, null, NOTE.G2, null, null, null],
+    chord: [[NOTE.C4, NOTE.E4], null, [NOTE.E4, NOTE.G4], null, [NOTE.C4, NOTE.G4], null, [NOTE.E4, NOTE.C5], null],
+    melody: [NOTE.C5, null, NOTE.E5, null, NOTE.G4, null, NOTE.E5, null] },
+  // Bar 1: G Major
+  { bass: [NOTE.G2, null, null, null, NOTE.D3, null, null, null],
+    chord: [[NOTE.B3, NOTE.D4], null, [NOTE.D4, NOTE.G4], null, [NOTE.B3, NOTE.G4], null, [NOTE.D4, NOTE.B4], null],
+    melody: [NOTE.D5, null, NOTE.B4, null, NOTE.G4, null, NOTE.A4, null] },
+  // Bar 2: A Minor
+  { bass: [NOTE.A2, null, null, null, NOTE.E3, null, null, null],
+    chord: [[NOTE.A3, NOTE.C4], null, [NOTE.C4, NOTE.E4], null, [NOTE.A3, NOTE.E4], null, [NOTE.C4, NOTE.A4], null],
+    melody: [NOTE.C5, null, NOTE.A4, null, NOTE.E5, null, NOTE.C5, null] },
+  // Bar 3: F Major
+  { bass: [NOTE.F2, null, null, null, NOTE.C3, null, null, null],
+    chord: [[NOTE.A3, NOTE.C4], null, [NOTE.C4, NOTE.F4], null, [NOTE.A3, NOTE.F4], null, [NOTE.C4, NOTE.A4], null],
+    melody: [NOTE.D5, null, NOTE.C5, null, NOTE.A4, null, NOTE.G4, null] },
+  // Bar 4: C Major
+  { bass: [NOTE.C2, null, null, null, NOTE.G2, null, null, null],
+    chord: [[NOTE.C4, NOTE.E4], null, [NOTE.E4, NOTE.G4], null, [NOTE.C4, NOTE.G4], null, [NOTE.E4, NOTE.C5], null],
+    melody: [NOTE.E5, null, NOTE.G5, null, NOTE.E5, null, NOTE.D5, null] },
+  // Bar 5: E Minor
+  { bass: [NOTE.E2, null, null, null, NOTE.B2, null, null, null],
+    chord: [[NOTE.G3, NOTE.B3], null, [NOTE.B3, NOTE.E4], null, [NOTE.G3, NOTE.E4], null, [NOTE.B3, NOTE.G4], null],
+    melody: [NOTE.B4, null, NOTE.G4, null, NOTE.E4, null, NOTE.G4, null] },
+  // Bar 6: F Major
+  { bass: [NOTE.F2, null, null, null, NOTE.C3, null, null, null],
+    chord: [[NOTE.A3, NOTE.C4], null, [NOTE.C4, NOTE.F4], null, [NOTE.A3, NOTE.F4], null, [NOTE.C4, NOTE.A4], null],
+    melody: [NOTE.A4, null, NOTE.C5, null, NOTE.D5, null, NOTE.E5, null] },
+  // Bar 7: G Major
+  { bass: [NOTE.G2, null, null, null, NOTE.D3, null, null, null],
+    chord: [[NOTE.B3, NOTE.D4], null, [NOTE.D4, NOTE.G4], null, [NOTE.B3, NOTE.G4], null, [NOTE.D4, NOTE.B4], null],
+    melody: [NOTE.D5, null, NOTE.B4, null, NOTE.G4, null, NOTE.D4, null] }
+];
+
+let bgmGainNode = null;
+let bgmFilterNode = null;
+let bgmTimer = null;
+let bgmCurrentStep = 0;
+let bgmPlaying = false;
+let bgmMuted = (localStorage.getItem("ludo_bgm_muted") === "1");
+
+function ensureBgmNodes() {
+  ensureAudio();
+  if (!audioCtx) return;
+  if (!bgmGainNode) {
+    bgmGainNode = audioCtx.createGain();
+    const initialVol = bgmMuted ? 0.0001 : 0.045;
+    bgmGainNode.gain.setValueAtTime(initialVol, audioCtx.currentTime);
+
+    bgmFilterNode = audioCtx.createBiquadFilter();
+    bgmFilterNode.type = "lowpass";
+    bgmFilterNode.frequency.setValueAtTime(1050, audioCtx.currentTime);
+
+    bgmFilterNode.connect(bgmGainNode);
+    bgmGainNode.connect(audioCtx.destination);
+  }
+}
+
+function playBgmNote(freq, duration = 0.16, type = "triangle", gainLevel = 0.03) {
+  if (!audioCtx || bgmMuted || !bgmFilterNode) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+    const now = audioCtx.currentTime;
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.linearRampToValueAtTime(gainLevel, now + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+    osc.connect(g);
+    g.connect(bgmFilterNode);
+    osc.start(now);
+    osc.stop(now + duration + 0.03);
+  } catch (e) {
+    // Ignore audio context errors
+  }
+}
+
+function tickBgm() {
+  if (!bgmPlaying || !audioCtx) return;
+  const barIndex = Math.floor(bgmCurrentStep / 8) % BGM_BARS.length;
+  const stepInBar = bgmCurrentStep % 8;
+  const bar = BGM_BARS[barIndex];
+
+  // Bass line
+  if (bar.bass[stepInBar]) {
+    playBgmNote(bar.bass[stepInBar], 0.28, "triangle", 0.045);
+  }
+
+  // Chords
+  if (bar.chord[stepInBar]) {
+    for (const freq of bar.chord[stepInBar]) {
+      playBgmNote(freq, 0.22, "sine", 0.022);
+    }
+  } else {
+    // Soft off-beat arpeggio
+    const prevChord = bar.chord[stepInBar - 1];
+    if (prevChord && prevChord.length > 1) {
+      const arpFreq = prevChord[stepInBar % 2];
+      if (arpFreq) playBgmNote(arpFreq * 2, 0.1, "sine", 0.012);
+    }
+  }
+
+  // Lead melody
+  if (bar.melody[stepInBar]) {
+    playBgmNote(bar.melody[stepInBar], 0.20, "triangle", 0.035);
+  }
+
+  bgmCurrentStep = (bgmCurrentStep + 1) % (BGM_BARS.length * 8);
+}
+
+function startBgm() {
+  const customAudio = document.getElementById("bgm-audio");
+  if (customAudio && customAudio.src) {
+    customAudio.muted = bgmMuted;
+    customAudio.play().catch(() => {});
+    bgmPlaying = true;
+    updateMusicUI();
+    return;
+  }
+
+  ensureBgmNodes();
+  if (audioCtx && audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+  if (bgmPlaying) return;
+  bgmPlaying = true;
+  bgmCurrentStep = 0;
+  if (bgmGainNode && audioCtx) {
+    const targetGain = bgmMuted ? 0.0001 : 0.045;
+    bgmGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+    bgmGainNode.gain.linearRampToValueAtTime(targetGain, audioCtx.currentTime + 0.2);
+  }
+  tickBgm();
+  if (bgmTimer) clearInterval(bgmTimer);
+  bgmTimer = setInterval(tickBgm, 160);
+  updateMusicUI();
+}
+
+function pauseBgm() {
+  const customAudio = document.getElementById("bgm-audio");
+  if (customAudio && customAudio.src) {
+    customAudio.pause();
+  }
+
+  if (!bgmPlaying) return;
+  bgmPlaying = false;
+  if (bgmTimer) {
+    clearInterval(bgmTimer);
+    bgmTimer = null;
+  }
+  if (bgmGainNode && audioCtx) {
+    bgmGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+    bgmGainNode.gain.linearRampToValueAtTime(0.0001, audioCtx.currentTime + 0.15);
+  }
+  updateMusicUI();
+}
+
+function resumeBgm() {
+  if (bgmPlaying || !state.gameStarted || state.paused || state.gameOver) return;
+
+  const customAudio = document.getElementById("bgm-audio");
+  if (customAudio && customAudio.src) {
+    customAudio.muted = bgmMuted;
+    customAudio.play().catch(() => {});
+    bgmPlaying = true;
+    updateMusicUI();
+    return;
+  }
+
+  ensureBgmNodes();
+  if (audioCtx && audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+  bgmPlaying = true;
+  if (bgmGainNode && audioCtx) {
+    const targetGain = bgmMuted ? 0.0001 : 0.045;
+    bgmGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+    bgmGainNode.gain.linearRampToValueAtTime(targetGain, audioCtx.currentTime + 0.2);
+  }
+  tickBgm();
+  if (bgmTimer) clearInterval(bgmTimer);
+  bgmTimer = setInterval(tickBgm, 160);
+  updateMusicUI();
+}
+
+function stopBgm() {
+  const customAudio = document.getElementById("bgm-audio");
+  if (customAudio && customAudio.src) {
+    customAudio.pause();
+    customAudio.currentTime = 0;
+  }
+
+  bgmPlaying = false;
+  if (bgmTimer) {
+    clearInterval(bgmTimer);
+    bgmTimer = null;
+  }
+  bgmCurrentStep = 0;
+  if (bgmGainNode && audioCtx) {
+    bgmGainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+    bgmGainNode.gain.linearRampToValueAtTime(0.0001, audioCtx.currentTime + 0.15);
+  }
+  updateMusicUI();
+}
+
+function toggleMusicMute() {
+  ensureBgmNodes();
+  bgmMuted = !bgmMuted;
+  localStorage.setItem("ludo_bgm_muted", bgmMuted ? "1" : "0");
+
+  const customAudio = document.getElementById("bgm-audio");
+  if (customAudio && customAudio.src) {
+    customAudio.muted = bgmMuted;
+  }
+
+  if (bgmGainNode && audioCtx) {
+    const now = audioCtx.currentTime;
+    bgmGainNode.gain.cancelScheduledValues(now);
+    bgmGainNode.gain.linearRampToValueAtTime(bgmMuted ? 0.0001 : 0.045, now + 0.1);
+  }
+
+  if (!bgmMuted && state.gameStarted && !state.paused && !state.gameOver && !bgmPlaying) {
+    startBgm();
+  }
+  updateMusicUI();
+}
+
+function updateMusicUI() {
+  const musicBtn = document.getElementById("music-btn");
+  const musicOnIcon = document.getElementById("music-on-icon");
+  const musicOffIcon = document.getElementById("music-off-icon");
+  if (!musicBtn) return;
+
+  const isMuted = bgmMuted;
+  if (musicOnIcon && musicOffIcon) {
+    musicOnIcon.classList.toggle("hidden", isMuted);
+    musicOffIcon.classList.toggle("hidden", !isMuted);
+  }
+  musicBtn.classList.toggle("muted", isMuted);
+  musicBtn.classList.toggle("active", bgmPlaying && !isMuted);
+  musicBtn.setAttribute("aria-label", isMuted ? "Unmute Background Music" : "Mute Background Music");
+  musicBtn.title = isMuted ? "Unmute Background Music" : "Mute Background Music";
 }
 
 // ---------- Board ----------
@@ -1276,6 +1536,7 @@ async function onTokenClick(playerId, tokenId, fromRobot = false) {
   const wonGame = checkWin(currentPlayer);
   if (wonGame) {
     state.gameOver = true;
+    stopBgm();
     clearRobotTimer();
     state.selectionLocked = false;
     document.body.classList.remove('locked');
@@ -1499,6 +1760,20 @@ function setupEvents() {
 
   // Init customizers
   setupColorCustomizer();
+
+  // Background music toggle button
+  const musicBtn = document.getElementById("music-btn");
+  if (musicBtn) {
+    musicBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      ensureAudio();
+      if (audioCtx && audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+      toggleMusicMute();
+    });
+  }
+  updateMusicUI();
 
   // Fullscreen button
   const fullscreenBtn = document.getElementById("fullscreen-btn");

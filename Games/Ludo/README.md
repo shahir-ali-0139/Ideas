@@ -59,6 +59,16 @@ This project brings the classic tabletop board game to the browser with rich ani
 - **Exact Home Finish**: Tokens must enter their dedicated color path and roll the exact count to land in the center home triangle.
 - **Victory Condition**: First player to guide all 4 tokens into the center home wins with a victory celebration modal.
 
+### 🎵 Dynamic Background Music (BGM)
+- **Automatic Gameplay Accompaniment**: Ambient, cheerful background music procedurally plays whenever the game is being played (started and active).
+- **Game State Aware**:
+  - Automatically **starts** when you click **Start**.
+  - Automatically **pauses** if you click **Pause**.
+  - Automatically **resumes** when you click **Resume**.
+  - Smoothly **stops** when someone wins or the game is reset, allowing victory fanfares to ring out clearly.
+- **Dedicated Header Music Button**: Click the music note button (`#music-btn`) in the top bar to mute/unmute at any time. Preference is automatically remembered in `localStorage`.
+- **Procedural & Offline**: Synthesized via the Web Audio API with soft basslines, harmonic chords, and melodic flourishes filtered with a warm low-pass acoustic profile—requiring 0 external audio files. Also supports custom audio via optional `<audio id="bgm-audio">`.
+
 ### 🔊 Procedural Web Audio Sound Effects
 Zero external audio files—sound is procedurally synthesized using the browser's built-in **Web Audio API**:
 - Dice shuffle rattle & roll settle ticks
@@ -114,6 +124,7 @@ Then visit `http://localhost:8080` in your browser.
 
 | Action | Control |
 |---|---|
+| **Toggle Background Music** | Click the music note icon button in the top header |
 | **Toggle Fullscreen** | Click the fullscreen icon button in the top header |
 | **Roll Dice** | Click the center dice or press <kbd>Space</kbd> |
 | **Select Token** | Click on any pulsing token or press keys <kbd>1</kbd>–<kbd>4</kbd> |
