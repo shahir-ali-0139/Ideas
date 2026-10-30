@@ -1,5 +1,4 @@
-
-    :root {
+:root {
   --bg: #111827;
   --panel: #1f2937;
   --text: #f9fafb;
@@ -354,7 +353,7 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(15, 1fr);
   grid-template-rows: repeat(15, 1fr);
-  background: #ffffff;
+  background: transparent;
   box-shadow:
     0 16px 34px rgba(0, 0, 0, 0.52);
 }
@@ -447,13 +446,62 @@ button:disabled {
   background: #ffffff !important;
   border-color: transparent !important;
   box-shadow: none;
-  border-radius: 0.38rem;
+  border-radius: 0 !important;
+  position: relative;
 }
 
-.yard-tl { border-top-left-radius: 0.95rem; }
-.yard-tr { border-top-right-radius: 0.95rem; }
-.yard-bl { border-bottom-left-radius: 0.95rem; }
-.yard-br { border-bottom-right-radius: 0.95rem; }
+.yard-tl,
+.yard-tr,
+.yard-bl,
+.yard-br {
+  border-radius: 0 !important;
+  position: relative;
+}
+
+.base-red.yard-tl,
+.base-red.yard-tr,
+.base-red.yard-bl,
+.base-red.yard-br {
+  background: var(--red) !important;
+}
+
+.base-green.yard-tl,
+.base-green.yard-tr,
+.base-green.yard-bl,
+.base-green.yard-br {
+  background: var(--green) !important;
+}
+
+.base-yellow.yard-tl,
+.base-yellow.yard-tr,
+.base-yellow.yard-bl,
+.base-yellow.yard-br {
+  background: var(--yellow) !important;
+}
+
+.base-blue.yard-tl,
+.base-blue.yard-tr,
+.base-blue.yard-bl,
+.base-blue.yard-br {
+  background: var(--blue) !important;
+}
+
+.yard-tl::before,
+.yard-tr::before,
+.yard-bl::before,
+.yard-br::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.yard-tl::before { border-top-left-radius: 0.95rem; }
+.yard-tr::before { border-top-right-radius: 0.95rem; }
+.yard-bl::before { border-bottom-left-radius: 0.95rem; }
+.yard-br::before { border-bottom-right-radius: 0.95rem; }
 
 .base-slot::after {
   content: none;
@@ -955,7 +1003,23 @@ button:disabled {
 }
 
 .base-inactive {
-  background: #333 !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.base-inactive * {
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+.base-inactive::before,
+.base-inactive::after {
+  display: none !important;
+  content: none !important;
 }
 
 .locked .mode-chip {
