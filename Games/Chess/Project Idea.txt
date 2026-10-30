@@ -1,0 +1,376 @@
+Project:   Chess — Premium Browser Chess Platform
+
+Act as a senior frontend engineer, chess-engine developer, UI/UX designer, and QA automation engineer. Build a complete, production-quality chess web application inspired by Chess.com, with an original visual identity and an advanced glassmorphism interface.
+
+1. Strict technology requirements
+
+Use ONLY:
+
+HTML5 for structure.
+CSS3 for layout, styling, animation, and responsive design.
+Vanilla JavaScript (ES6+) for application logic and chess rules.
+Native browser APIs for storage, audio, keyboard controls, and DOM interaction.
+
+Do not use React, Vue, Angular, TypeScript, Tailwind, Bootstrap, jQuery, Node.js application frameworks, or frontend build systems.
+
+Keep the application runnable directly in a modern browser. Use separate files:
+
+index.html
+styles.css
+script.js
+tests/unit-tests.html
+tests/unit-tests.js
+tests/integration-tests.html
+tests/integration-tests.js
+README.md
+
+Testing may use browser-native JavaScript and a lightweight custom test harness. If an external chess rules library is used, explicitly justify it and ensure the core project still uses only HTML, CSS, and JavaScript. Prefer implementing a robust legal-move engine in vanilla JavaScript without dependencies.
+
+2. Design direction: advanced glassmorphism
+
+Create a luxurious, futuristic chess interface with a dark navy, midnight blue, violet, and electric cyan palette.
+
+Visual requirements:
+
+Layered translucent glass panels using backdrop-filter: blur(...).
+Subtle gradients, ambient lighting, radial glows, and soft shadows.
+Fine borders with translucent white highlights.
+Rounded panels, refined spacing, and elegant typography.
+Animated background orbs and subtle particle effects implemented with CSS or vanilla JavaScript.
+Smooth hover, active, focus, and transition states.
+Chess pieces with attractive Unicode or locally available piece glyphs; avoid broken external assets.
+Light and dark board themes.
+Responsive desktop, tablet, and mobile layouts.
+Accessible contrast, visible keyboard focus, and reduced-motion support.
+Graceful fallback for browsers without backdrop-filter.
+
+The design should feel like a premium chess product rather than a generic admin dashboard. Use CSS variables for colors, spacing, shadows, glass opacity, and animation timing.
+
+3. Main application layout
+
+Create a polished chess dashboard with:
+
+Header
+Original chess brand and logo.
+Play, Puzzles, Analysis, Learn, and Statistics navigation.
+Theme toggle.
+Sound toggle.
+Settings menu.
+Player profile panel with a locally stored display name and rating-style display.
+Main play area
+Large interactive 8×8 chessboard.
+Player cards above and below the board, depending on orientation.
+Player avatars using initials or CSS-generated artwork.
+Player names, ratings, captured pieces, and material advantage.
+Chess clocks with a clear active-player indicator.
+Turn indicator and game-status messages.
+Last-move highlights.
+Legal-move destination markers.
+Check highlighting and king-in-check indicators.
+Move history in algebraic notation.
+Responsive game controls.
+Right-side glass panel
+Move history with clickable moves.
+Captured-piece summary.
+Material balance.
+Game information.
+Move explanations or basic position tips.
+Optional opening name when it can be reliably identified.
+
+On mobile, move history and secondary panels should stack beneath the board or open as compact drawers.
+
+4. Chess engine and rules
+
+Implement a complete legal chess rules engine in vanilla JavaScript. Separate the rules engine from rendering and UI state.
+
+The engine must correctly support:
+
+Standard starting position and valid FEN loading/export.
+Legal movement for all six piece types.
+Captures and protection against capturing the opponent's king.
+Check, checkmate, and stalemate.
+Castling on both sides, with all restrictions enforced.
+En passant.
+Pawn promotion with a working piece-selection dialog.
+Pins and moves that would expose one's own king.
+King safety when in check.
+Checkmate and draw detection.
+Threefold repetition and the fifty-move draw claim.
+Fivefold repetition and the seventy-five-move draw rule.
+Insufficient mating material detection.
+Correct move counters, turn tracking, castling rights, and en passant state.
+Undo and redo that restore the complete position.
+SAN algebraic notation and UCI move notation.
+Move validation before any state mutation.
+
+Never implement chess as basic piece movement alone. Every move must be checked for legality against the complete current position.
+
+Use a clear internal board representation and pure functions wherever possible. Suggested public API:
+
+createGame(fen)
+getLegalMoves(position, square)
+makeMove(position, move)
+undoMove(history)
+redoMove(history)
+isCheck(position, color)
+isCheckmate(position)
+isStalemate(position)
+getGameStatus(position)
+getFen(position)
+getSan(position, move)
+parseSan(position, notation)
+getCapturedPieces(history)
+getMaterialBalance(position)
+
+Use immutable snapshots or complete reversible move records. Undo and redo must preserve castling rights, en passant, half-move counters, full-move numbers, repetition history, and promotion details.
+
+5. Interaction and gameplay
+
+Implement:
+
+Click-to-select and click-to-move.
+Drag-and-drop piece movement.
+Legal-move indicators.
+Clear feedback for illegal moves.
+Promotion selection.
+Board flip.
+Undo, redo, restart, and new game.
+Resign and offer-draw controls with confirmation dialogs.
+Move history navigation.
+Position copying as FEN.
+Copying move history as PGN.
+Keyboard accessibility for board navigation.
+Optional move sound and subtle animation.
+Persisted theme, preferences, and game state using localStorage.
+
+Make the controls functional. Do not add buttons that merely look clickable.
+
+6. Extra features
+
+Implement as many of these as possible without compromising chess correctness:
+
+Game modes
+Local two-player chess.
+Player versus computer with selectable difficulty.
+Guided opening lessons.
+Free-play analysis mode.
+Puzzle mode with configurable sample puzzles and validated solutions.
+Computer opponent
+
+Create a vanilla JavaScript chess AI using:
+
+Minimax search.
+Alpha-beta pruning.
+Material evaluation.
+Piece-square tables.
+Basic positional bonuses.
+Iterative deepening or a configurable search depth.
+A time or node limit so the browser remains responsive.
+
+The AI must choose only legal moves. If the position is terminal, it must not attempt another move. Use Web Workers only if necessary and only with native browser JavaScript.
+
+Clearly label the AI as a basic built-in opponent rather than claiming grandmaster strength.
+
+Training and analysis
+Opening explorer using a small bundled opening dataset.
+Legal move hints.
+Simple move-quality estimates based on evaluation before and after a move.
+Blunder and missed-tactic indicators only when supported by the evaluator.
+Tactical puzzles.
+Board coordinates and configurable highlighting.
+PGN import/export.
+FEN import/export.
+Practice mode with no clock.
+Statistics
+Local game history.
+Wins, losses, and draws.
+Win rate.
+Most-played color.
+Average game duration when clocks are enabled.
+Opening frequency for games whose opening can be identified.
+Resettable local statistics.
+
+Do not present a locally estimated rating as an official online rating.
+
+7. Clock implementation
+
+Implement accurate two-player chess clocks using a monotonic time source such as performance.now().
+
+Include:
+
+Configurable initial time.
+Optional increment per move.
+Pause and resume.
+Correct clock switching only after a legal move.
+Timeout handling and game termination.
+Protection against multiple overlapping timers.
+Clock cleanup on restart and page teardown.
+
+The display must not drift simply because a browser interval fires late.
+
+8. Advanced UX and accessibility
+Loading and transition states.
+Toast notifications for copy, save, and game actions.
+Custom confirmation dialogs.
+Empty states for history and statistics.
+Clear error messages for invalid FEN or PGN.
+Responsive layouts down to small mobile screens.
+Semantic HTML and ARIA labels.
+Keyboard-operable dialogs and menus.
+No color-only communication of game status.
+prefers-reduced-motion support.
+No forced audio playback before user interaction.
+No fake online multiplayer or cloud persistence claims.
+
+If online play is unavailable without a backend, label local multiplayer honestly and design the code so a future networking layer can be added separately.
+
+9. Automated unit testing
+
+Build a runnable unit test suite using plain JavaScript and a custom assertion/test runner.
+
+Test individual functions and edge cases, including:
+
+Board and position tests
+Correct standard starting position.
+Exactly 64 valid squares.
+Correct piece placement and side to move.
+FEN parsing and round-trip serialization.
+Invalid FEN rejection.
+Invalid positions rejected where supported by the validator.
+Movement tests
+Pawn single-step and double-step.
+Pawn captures.
+Knight jumps.
+Sliding-piece blocking.
+King movement restrictions.
+Legal move generation for both colors.
+No capturing the opposing king.
+Pinned pieces cannot expose their own king.
+Moves that evade check.
+Illegal moves leave the position unchanged.
+Special rules tests
+Legal and illegal castling.
+Castling through check is prohibited.
+Castling after the king or relevant rook has moved is prohibited.
+En passant capture.
+En passant discovered-check rejection.
+Promotion to queen, rook, bishop, and knight.
+Checkmate and stalemate.
+Insufficient material.
+Repetition counting.
+Fifty-move and seventy-five-move rules.
+Correct move-number updates.
+Correct SAN disambiguation.
+History tests
+Undo restores the exact prior FEN.
+Redo restores the exact resulting FEN.
+Undo and redo preserve special-move metadata.
+Making a new move after undo correctly clears the redo branch.
+Clock tests
+Initial clock setup.
+Active clock switching.
+Increment application.
+Pause and resume.
+Timeout handling.
+No overlapping timers.
+
+Include well-known chess test positions and expected legal-move counts wherever reliable. Document the expected values and sources for those fixtures.
+
+10. Integration testing
+
+Create a separate browser-based integration test suite that exercises the real interface and the chess engine together.
+
+Test these end-to-end flows:
+
+Load the app and verify the initial board contains 32 pieces in the standard position.
+Select a piece and move it using square clicks.
+Move a piece using drag and drop.
+Attempt an illegal move and verify that the position remains unchanged.
+Play a legal opening sequence: e2e4, e7e5, g1f3, b8c6.
+Verify SAN notation and turn changes.
+Castle legally and verify king and rook placement.
+Perform en passant and verify the captured pawn disappears.
+Promote a pawn and verify the selected promoted piece.
+Reach checkmate and verify the terminal state.
+Undo and redo moves and verify FEN consistency.
+Restart and verify a fresh game.
+Flip the board and verify piece coordinates remain correct.
+Toggle sound and theme settings.
+Save, reload, and restore persisted preferences.
+Verify clock switching and timeout behavior with deterministic test clocks.
+Import valid and invalid FEN and PGN data.
+Verify all visible buttons and dialogs behave correctly.
+
+Prefer native DOM events and dependency-free tests. If browser automation requires an external tool, make it optional and document the setup separately; the core application must remain dependency-free.
+
+11. Test runner and quality gates
+
+The unit and integration test pages must:
+
+Run from a local static HTTP server.
+Display pass/fail totals.
+Identify each failed assertion.
+Show expected and actual values.
+Provide stack traces where available.
+Use deterministic fixtures and mocked clocks.
+Avoid network calls.
+Return a non-success result or visibly fail when any assertion fails.
+Never report a test as passing if it was skipped or not executed.
+
+Use a test registry and assertion helpers such as assertEqual, assertDeepEqual, assertTrue, assertThrows, and assertFenEqual.
+
+Add a final regression suite that runs all core chess rules tests before declaring the build ready.
+
+12. Performance and code quality
+Use clear naming and small, testable functions.
+Separate chess logic, rendering, persistence, clocks, AI, and test code.
+Avoid global-variable pollution.
+Use event delegation where practical.
+Prevent duplicate event listeners.
+Use requestAnimationFrame only where appropriate.
+Avoid unnecessary board re-renders.
+Validate imported user data.
+Avoid unsafe HTML injection; prefer textContent and DOM APIs.
+Keep animations smooth and avoid blocking the main thread.
+Add comments for complex chess rules and search logic.
+13. Required delivery process
+
+Build the application in phases:
+
+Phase 1: Create the file structure and polished responsive glassmorphism layout.
+
+Phase 2: Implement the complete chess rules engine independently.
+
+Phase 3: Connect the engine to the interactive board and game controls.
+
+Phase 4: Add clocks, history, persistence, AI, and training features.
+
+Phase 5: Write and run unit tests.
+
+Phase 6: Write and run integration tests.
+
+Phase 7: Fix all discovered failures and rerun the full regression suite.
+
+Phase 8: Inspect responsive behavior, accessibility, console errors, and illegal-move handling.
+
+Do not stop after creating a static UI or a partially working prototype.
+
+14. Definition of done
+
+The project is complete only when:
+
+All required files exist and contain functional code.
+The application launches in a browser without a build step.
+Chess rules are enforced correctly.
+The board supports all legal moves and special rules.
+The UI is responsive and visually polished.
+Game controls and persistence work.
+Unit and integration test suites are runnable.
+Test results reflect actual execution.
+All critical chess rules tests pass.
+No critical console errors remain.
+The README explains how to run the app and tests, known limitations, keyboard controls, and architecture.
+
+At completion, provide a concise summary of the implemented features, the project file tree, the commands or steps for launching the application, actual test results, and any remaining limitations.
+
+Prioritize correctness, maintainability, accessibility, and a premium glassmorphism experience over adding superficial features.

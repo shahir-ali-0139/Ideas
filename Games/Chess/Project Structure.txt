@@ -1,0 +1,10 @@
+ -chess/
+├── index.html
+├── styles.css
+├── script.js
+├── tests/
+│   ├── unit-tests.html
+│   ├── unit-tests.js
+│   ├── integration-tests.html
+│   └── integration-tests.js
+└── README.md
