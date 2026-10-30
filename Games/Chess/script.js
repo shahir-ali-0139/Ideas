@@ -131,6 +131,241 @@
   }
 
   // ==========================================================================
+  // 1b. Procedural Background Music Generator (Lo-Fi Piano & Ambient Pads)
+  // Continuous, peaceful, non-intrusive chess study soundtrack
+  // ==========================================================================
+  class BackgroundMusicManager {
+    constructor(soundManager) {
+      this.sound = soundManager;
+      this.isPlaying = false;
+      this.enabled = true; // Auto-play enabled by default
+      this.timer = null;
+      this.currentChordIdx = 0;
+      this.masterGain = null;
+      this.delayNode = null;
+      this.feedbackGain = null;
+
+      // 4 Ambient Jazz / Study Chords (Hz)
+      this.chords = [
+        // Cmaj9: C3, G3, B3, D4, E4
+        [130.81, 196.00, 246.94, 293.66, 329.63],
+        // Am9: A2, E3, G3, B3, C4
+        [110.00, 164.81, 196.00, 246.94, 261.63],
+        // Fmaj7: F2, C3, E3, A3, C4
+        [87.31, 130.81, 164.81, 220.00, 261.63],
+        // G6/Em7: G2, D3, G3, B3, E4
+        [98.00, 146.83, 196.00, 246.94, 329.63]
+      ];
+
+      // Contemplative Piano Melodic Notes (C major / A minor pentatonic in octaves 4-5)
+      this.melodyNotes = [
+        261.63, 293.66, 329.63, 392.00, 440.00,
+        523.25, 587.33, 659.25, 783.99
+      ];
+
+      this.stepDuration = 5.6; // ~5.6 seconds per chord (relaxed ambient tempo)
+
+      this.initOnFirstInteraction();
+    }
+
+    initOnFirstInteraction() {
+      const startMusicOnFirstInteraction = () => {
+        if (this.enabled && !this.isPlaying) {
+          this.play();
+        }
+        cleanup();
+      };
+
+      const cleanup = () => {
+        document.removeEventListener('click', startMusicOnFirstInteraction, true);
+        document.removeEventListener('pointerdown', startMusicOnFirstInteraction, true);
+        document.removeEventListener('touchstart', startMusicOnFirstInteraction, true);
+      };
+
+      document.addEventListener('click', startMusicOnFirstInteraction, true);
+      document.addEventListener('pointerdown', startMusicOnFirstInteraction, true);
+      document.addEventListener('touchstart', startMusicOnFirstInteraction, true);
+    }
+
+    initAudioGraph() {
+      if (!this.sound.ctx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+          this.sound.ctx = new AudioContext();
+        }
+      }
+      if (this.sound.ctx && this.sound.ctx.state === 'suspended') {
+        this.sound.ctx.resume();
+      }
+
+      if (!this.masterGain && this.sound.ctx) {
+        const ctx = this.sound.ctx;
+        this.masterGain = ctx.createGain();
+        this.masterGain.gain.setValueAtTime(0.18, ctx.currentTime); // Gentle background volume
+
+        // Delay / Reverb bus for spacious piano sound
+        this.delayNode = ctx.createDelay();
+        this.delayNode.delayTime.setValueAtTime(0.38, ctx.currentTime);
+
+        this.feedbackGain = ctx.createGain();
+        this.feedbackGain.gain.setValueAtTime(0.28, ctx.currentTime);
+
+        const delayFilter = ctx.createBiquadFilter();
+        delayFilter.type = 'lowpass';
+        delayFilter.frequency.setValueAtTime(1200, ctx.currentTime);
+
+        this.delayNode.connect(delayFilter);
+        delayFilter.connect(this.feedbackGain);
+        this.feedbackGain.connect(this.delayNode);
+        this.delayNode.connect(this.masterGain);
+
+        this.masterGain.connect(ctx.destination);
+      }
+    }
+
+    play() {
+      if (this.isPlaying) return;
+      this.initAudioGraph();
+      if (!this.sound.ctx) return;
+
+      this.isPlaying = true;
+      this.scheduleNextBar();
+      this.updateUI();
+    }
+
+    scheduleNextBar() {
+      if (!this.isPlaying || !this.sound.ctx) return;
+
+      const ctx = this.sound.ctx;
+      const now = ctx.currentTime;
+      const chord = this.chords[this.currentChordIdx];
+      this.currentChordIdx = (this.currentChordIdx + 1) % this.chords.length;
+
+      // 1. Warm ambient chord pad
+      this.playChordPad(chord, now, this.stepDuration);
+
+      // 2. Subtle contemplative melody notes over the chord
+      this.playMelodicNotes(chord, now);
+
+      // Schedule next chord
+      this.timer = setTimeout(() => {
+        this.scheduleNextBar();
+      }, (this.stepDuration - 0.4) * 1000);
+    }
+
+    playChordPad(chord, startTime, duration) {
+      if (!this.sound.ctx || !this.masterGain) return;
+      const ctx = this.sound.ctx;
+
+      chord.forEach((freq) => {
+        const osc = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, startTime);
+
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(freq * 1.002, startTime); // gentle stereo chorus detune
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(650, startTime);
+
+        const peakGain = 0.08 / chord.length;
+        gain.gain.setValueAtTime(0.0001, startTime);
+        gain.gain.linearRampToValueAtTime(peakGain, startTime + 1.4);
+        gain.gain.setValueAtTime(peakGain, startTime + duration - 1.8);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration + 0.5);
+
+        osc.connect(filter);
+        osc2.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+
+        osc.start(startTime);
+        osc2.start(startTime);
+        osc.stop(startTime + duration + 0.6);
+        osc2.stop(startTime + duration + 0.6);
+      });
+    }
+
+    playMelodicNotes(chord, barStartTime) {
+      if (!this.sound.ctx || !this.masterGain) return;
+      const ctx = this.sound.ctx;
+      const noteOffsets = [0.4, 2.0, 3.8];
+
+      noteOffsets.forEach((offset) => {
+        const noteTime = barStartTime + offset;
+        const noteFreq = this.melodyNotes[Math.floor(Math.random() * this.melodyNotes.length)];
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(noteFreq, noteTime);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1400, noteTime);
+
+        gain.gain.setValueAtTime(0.0001, noteTime);
+        gain.gain.linearRampToValueAtTime(0.12, noteTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 2.4);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+        if (this.delayNode) {
+          gain.connect(this.delayNode);
+        }
+
+        osc.start(noteTime);
+        osc.stop(noteTime + 2.5);
+      });
+    }
+
+    stop() {
+      this.isPlaying = false;
+      if (this.timer) {
+        clearTimeout(this.timer);
+        this.timer = null;
+      }
+      this.updateUI();
+    }
+
+    toggle() {
+      this.enabled = !this.enabled;
+      if (this.enabled) {
+        this.play();
+      } else {
+        this.stop();
+      }
+      return this.enabled;
+    }
+
+    updateUI() {
+      const btn = document.getElementById('btn-music-toggle');
+      const wave = document.getElementById('music-wave-anim');
+      if (btn) {
+        if (this.isPlaying && this.enabled) {
+          btn.classList.add('playing');
+          const icon = btn.querySelector('.icon-music');
+          if (icon) icon.textContent = '🎶';
+          btn.title = 'Mute Background Music';
+          if (wave) wave.style.display = 'inline-flex';
+        } else {
+          btn.classList.remove('playing');
+          const icon = btn.querySelector('.icon-music');
+          if (icon) icon.textContent = '🎵';
+          btn.title = 'Play Background Music';
+          if (wave) wave.style.display = 'none';
+        }
+      }
+    }
+  }
+
+  // ==========================================================================
   // 2. Fallback Chess AI Engine (Minimax with Alpha-Beta & PST)
   // Ensures 100% playable AI in environments where Web Workers are blocked
   // ==========================================================================
@@ -541,6 +776,7 @@
     constructor() {
       this.chess = new window.Chess();
       this.sound = new SoundManager();
+      this.music = new BackgroundMusicManager(this.sound);
 
       // Automatic Color Alternation Logic
       // Game 1: Human = White, Computer = Black
@@ -599,6 +835,7 @@
 
         // Controls
         btnFullscreen: document.getElementById('btn-fullscreen'),
+        btnMusicToggle: document.getElementById('btn-music-toggle'),
         btnSoundToggle: document.getElementById('btn-sound-toggle'),
         selectTheme: document.getElementById('select-theme'),
         selectDifficulty: document.getElementById('select-difficulty'),
@@ -693,7 +930,21 @@
           this.sound.enabled = savedSound === 'true';
           this.dom.btnSoundToggle.querySelector('.icon-sound').textContent = this.sound.enabled ? '🔊' : '🔇';
         }
+        const savedMusic = localStorage.getItem('chess_music_enabled');
+        if (savedMusic !== null) {
+          this.music.enabled = savedMusic === 'true';
+        }
+        this.music.updateUI();
       } catch (e) {}
+
+      // Background Music Toggle
+      if (this.dom.btnMusicToggle) {
+        this.dom.btnMusicToggle.addEventListener('click', () => {
+          const enabled = this.music.toggle();
+          try { localStorage.setItem('chess_music_enabled', enabled.toString()); } catch (e) {}
+          this.showToast(enabled ? 'Background music playing 🎶' : 'Background music paused 🔇');
+        });
+      }
 
       // Sound Toggle
       this.dom.btnSoundToggle.addEventListener('click', () => {
@@ -822,6 +1073,8 @@
           this.dom.btnNewGame.click();
         } else if (key === 'r') {
           this.dom.btnRestart.click();
+        } else if (key === 'm') {
+          if (this.dom.btnMusicToggle) this.dom.btnMusicToggle.click();
         }
       });
 
@@ -888,6 +1141,11 @@
       this.updateGameInfo();
       this.updateMovesTable();
       this.updateEvalBar(0);
+
+      // Start background music during match if enabled
+      if (this.music.enabled && !this.music.isPlaying) {
+        this.music.play();
+      }
 
       // Automatic first move: If Computer is White, it moves first!
       if (this.computerColor === 'w') {
@@ -1174,6 +1432,11 @@
 
         if (this.chess.inCheck()) {
           this.sound.playCheck();
+        }
+
+        // Ensure background music is playing during the match
+        if (this.music.enabled && !this.music.isPlaying) {
+          this.music.play();
         }
 
         this.deselect();
