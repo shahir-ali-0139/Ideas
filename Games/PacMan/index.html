@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Classic Retro Arcade PAC-MAN game built with HTML5 Canvas, CSS3, and Vanilla JavaScript. Features original chiptune Web Audio synthesis, responsive controls, ghost AI, and cookie score persistence.">
+  <meta name="theme-color" content="#000000">
+  <title>PAC-MAN Arcade Classic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Arcade Cabinet Shell -->
+  <div class="arcade-cabinet">
+    <!-- Top Marquee / Header -->
+    <header class="arcade-header">
+      <div class="header-left">
+        <div class="score-block">
+          <span class="score-title">1UP</span>
+          <span id="current-score" class="score-val">00</span>
+        </div>
+      </div>
+      <div class="header-center">
+        <h1 class="game-logo">PAC<span class="logo-dash">-</span>MAN</h1>
+      </div>
+      <div class="header-right">
+        <div class="score-block">
+          <span class="score-title">HIGH SCORE</span>
+          <span id="high-score" class="score-val">00</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Game Container -->
+    <main class="game-stage">
+      <!-- Game Canvas Container -->
+      <div class="canvas-wrapper" id="canvas-wrapper">
+        <canvas id="game-canvas" width="560" height="620" aria-label="Pac-Man Game Board" role="img"></canvas>
+
+        <!-- Start / Intro Screen Overlay -->
+        <div id="start-screen" class="overlay-screen active">
+          <div class="screen-box">
+            <h2 class="arcade-title glow-yellow">PAC-MAN</h2>
+            <div class="ghost-roster">
+              <div class="roster-row">
+                <span class="ghost-icon blinky-color"></span>
+                <span class="ghost-name blinky-color">BLINKY</span>
+                <span class="ghost-nick">"SHADOW"</span>
+              </div>
+              <div class="roster-row">
+                <span class="ghost-icon pinky-color"></span>
+                <span class="ghost-name pinky-color">PINKY</span>
+                <span class="ghost-nick">"SPEEDY"</span>
+              </div>
+              <div class="roster-row">
+                <span class="ghost-icon inky-color"></span>
+                <span class="ghost-name inky-color">INKY</span>
+                <span class="ghost-nick">"BASHFUL"</span>
+              </div>
+              <div class="roster-row">
+                <span class="ghost-icon clyde-color"></span>
+                <span class="ghost-name clyde-color">CLYDE</span>
+                <span class="ghost-nick">"POKEY"</span>
+              </div>
+            </div>
+
+            <div class="point-table">
+              <div class="pt-item"><span class="dot-sample"></span> 10 PTS</div>
+              <div class="pt-item"><span class="energizer-sample"></span> 50 PTS</div>
+              <div class="pt-item"><span class="ghost-sample"></span> 200/400/800/1600</div>
+            </div>
+
+            <div class="start-actions">
+              <button type="button" id="btn-play" class="arcade-btn btn-large btn-play">
+                <span class="btn-text">PLAY GAME</span>
+              </button>
+              <div class="start-sub-actions">
+                <button type="button" id="btn-how-to-play" class="arcade-btn btn-secondary">CONTROLS</button>
+                <button type="button" id="btn-view-stats" class="arcade-btn btn-secondary">STATS</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ready Notice -->
+        <div id="ready-banner" class="overlay-banner hidden">
+          <span class="ready-text">READY!</span>
+        </div>
+
+        <!-- Pause Overlay -->
+        <div id="pause-screen" class="overlay-screen hidden">
+          <div class="screen-box">
+            <h2 class="arcade-title glow-cyan">PAUSED</h2>
+            <p class="pause-hint">Game is currently paused</p>
+            <div class="pause-actions">
+              <button type="button" id="btn-resume" class="arcade-btn btn-primary">RESUME</button>
+              <button type="button" id="btn-restart-from-pause" class="arcade-btn btn-secondary">RESTART</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Level Completed Overlay -->
+        <div id="level-clear-screen" class="overlay-screen hidden">
+          <div class="screen-box">
+            <h2 class="arcade-title glow-green">LEVEL CLEAR!</h2>
+            <p class="clear-stats" id="clear-level-text">LEVEL 1 COMPLETED</p>
+            <p class="clear-bonus" id="clear-bonus-text">+500 BONUS POINTS</p>
+            <button type="button" id="btn-next-level" class="arcade-btn btn-primary">NEXT LEVEL</button>
+          </div>
+        </div>
+
+        <!-- Game Over Overlay -->
+        <div id="game-over-screen" class="overlay-screen hidden">
+          <div class="screen-box">
+            <h2 class="arcade-title glow-red">GAME OVER</h2>
+            <div class="game-over-stats">
+              <p>FINAL SCORE: <span id="final-score" class="stat-highlight">0</span></p>
+              <p>LEVEL REACHED: <span id="final-level" class="stat-highlight">1</span></p>
+              <p id="new-high-score-msg" class="new-high-score hidden glow-yellow">★ NEW HIGH SCORE! ★</p>
+            </div>
+            <button type="button" id="btn-play-again" class="arcade-btn btn-large btn-play">PLAY AGAIN</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls & Status Dashboard -->
+      <div class="controls-panel">
+        <!-- Status Bar: Lives & Current Level -->
+        <div class="status-bar">
+          <div class="lives-container" aria-label="Remaining Lives">
+            <span class="status-label">LIVES:</span>
+            <div id="lives-icons" class="lives-icons">
+              <span class="life-icon"></span>
+              <span class="life-icon"></span>
+              <span class="life-icon"></span>
+            </div>
+          </div>
+
+          <div class="level-container" aria-label="Current Level">
+            <span class="status-label">LEVEL:</span>
+            <span id="level-indicator" class="level-badge">1</span>
+            <span id="fruit-indicator" class="fruit-icon cherry-icon" title="Bonus Fruit"></span>
+          </div>
+        </div>
+
+        <!-- Utility Toolbar Buttons -->
+        <div class="toolbar">
+          <button type="button" id="btn-pause" class="icon-btn" title="Pause / Resume (P / Esc)" aria-label="Pause Game">
+            <svg class="svg-icon" viewBox="0 0 24 24" width="20" height="20">
+              <rect x="5" y="4" width="4" height="16" fill="currentColor"/>
+              <rect x="15" y="4" width="4" height="16" fill="currentColor"/>
+            </svg>
+          </button>
+          <button type="button" id="btn-restart" class="icon-btn" title="Restart Game" aria-label="Restart Game">
+            <svg class="svg-icon" viewBox="0 0 24 24" width="20" height="20">
+              <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0 0 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 0 0 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" fill="currentColor"/>
+            </svg>
+          </button>
+          <button type="button" id="btn-toggle-sfx" class="icon-btn" title="Toggle Sound FX" aria-label="Toggle Sound Effects">
+            <span id="sfx-icon">🔊</span>
+          </button>
+          <button type="button" id="btn-toggle-music" class="icon-btn" title="Toggle Background Music (M)" aria-label="Toggle Music">
+            <span id="music-icon">🎵</span>
+          </button>
+          <button type="button" id="btn-open-stats" class="icon-btn" title="View Statistics" aria-label="Game Statistics">
+            📊
+          </button>
+          <button type="button" id="btn-open-help" class="icon-btn" title="How To Play" aria-label="How To Play">
+            ❓
+          </button>
+        </div>
+
+        <!-- Volume Slider -->
+        <div class="volume-control">
+          <label for="volume-slider" class="volume-label">VOL</label>
+          <input type="range" id="volume-slider" min="0" max="100" value="70" class="arcade-slider" aria-label="Master Volume">
+          <span id="volume-text" class="volume-val">70%</span>
+        </div>
+
+        <!-- Mobile Touch Directional Pad (D-Pad) -->
+        <div class="dpad-wrapper" id="dpad" aria-label="Touch Directional Pad">
+          <div class="dpad-grid">
+            <button type="button" class="dpad-btn dpad-up" id="dpad-up" aria-label="Move Up">▲</button>
+            <button type="button" class="dpad-btn dpad-left" id="dpad-left" aria-label="Move Left">◀</button>
+            <div class="dpad-center" aria-hidden="true"></div>
+            <button type="button" class="dpad-btn dpad-right" id="dpad-right" aria-label="Move Right">▶</button>
+            <button type="button" class="dpad-btn dpad-down" id="dpad-down" aria-label="Move Down">▼</button>
+          </div>
+          <p class="dpad-hint">Touch arrows or swipe game board</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer Information -->
+    <footer class="arcade-footer">
+      <span>Classic HTML5 Arcade Edition • Arrow Keys / WASD • Swipe & Touch Enabled</span>
+    </footer>
+  </div>
+
+  <!-- Dialog: Statistics & Cookie Management -->
+  <dialog id="stats-dialog" aria-labelledby="stats-dialog-title" closedby="any">
+    <div class="modal-card">
+      <h2 id="stats-dialog-title" class="modal-title glow-cyan">ARCADE RECORDS</h2>
+      <p class="modal-subtitle">Persistent Cookie Storage Data</p>
+
+      <div class="stats-table">
+        <div class="stat-row">
+          <span class="stat-name">ALL-TIME HIGH SCORE:</span>
+          <span id="cookie-high-score" class="stat-data glow-yellow">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">CURRENT / LAST SCORE:</span>
+          <span id="cookie-current-score" class="stat-data">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">TOTAL GAMES PLAYED:</span>
+          <span id="cookie-games-played" class="stat-data">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">HIGHEST LEVEL REACHED:</span>
+          <span id="cookie-max-level" class="stat-data">1</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-name">COOKIE STATUS:</span>
+          <span id="cookie-status" class="stat-data status-ok">ACTIVE (LAX)</span>
+        </div>
+      </div>
+
+      <div class="modal-button-group">
+        <button type="button" id="btn-reset-cookie-stats" class="arcade-btn btn-danger">RESET SAVED STATS</button>
+        <form method="dialog">
+          <button type="submit" class="arcade-btn btn-primary" autofocus>CLOSE</button>
+        </form>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Dialog: How To Play / Controls Guide -->
+  <dialog id="help-dialog" aria-labelledby="help-dialog-title" closedby="any">
+    <div class="modal-card">
+      <h2 id="help-dialog-title" class="modal-title glow-yellow">HOW TO PLAY</h2>
+
+      <div class="guide-content">
+        <div class="guide-block">
+          <h3>DESKTOP CONTROLS</h3>
+          <p><span class="kbd">▲ / W</span> Move Up</p>
+          <p><span class="kbd">▼ / S</span> Move Down</p>
+          <p><span class="kbd">◀ / A</span> Move Left</p>
+          <p><span class="kbd">▶ / D</span> Move Right</p>
+          <p><span class="kbd">P</span> or <span class="kbd">ESC</span> Pause / Resume</p>
+          <p><span class="kbd">M</span> Mute Background Music</p>
+        </div>
+
+        <div class="guide-block">
+          <h3>MOBILE & TABLET</h3>
+          <p>• Tap on-screen D-Pad arrow buttons</p>
+          <p>• Or swipe in any direction directly across the maze</p>
+          <p>• Corner buffering lets you turn smoothly without getting stuck!</p>
+        </div>
+
+        <div class="guide-block">
+          <h3>SCORING & RULES</h3>
+          <p>• Pellets = 10 pts | Energizers = 50 pts</p>
+          <p>• Eat Energizers to make ghosts vulnerable</p>
+          <p>• Eat ghosts for 200, 400, 800, 1600 pts!</p>
+          <p>• Bonus Fruit spawns under ghost house for extra points</p>
+          <p>• Extra Life awarded at 10,000 points!</p>
+        </div>
+      </div>
+
+      <div class="modal-button-group">
+        <form method="dialog">
+          <button type="submit" class="arcade-btn btn-primary" autofocus>START PLAYING</button>
+        </form>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Game Script -->
+  <script src="script.js"></script>
+</body>
+</html>
+
