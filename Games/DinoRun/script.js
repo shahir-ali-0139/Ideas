@@ -142,8 +142,8 @@ class SoundSystem {
     this.seqStep = 0;
     this.tempo = 120; // BPM
 
-    // Track active oscillators for smooth teardown
-    this.activeNodes = new Set();
+    // Pre-allocated noise buffer for high-performance zero-allocation percussion
+    this.noiseBuffer = null;
   }
 
   init() {
@@ -164,6 +164,33 @@ class SoundSystem {
     this.sfxGain = this.ctx.createGain();
     this.sfxGain.gain.setValueAtTime(this.settings.sfxEnabled ? this.settings.sfxVolume * 0.45 : 0, this.ctx.currentTime);
     this.sfxGain.connect(this.masterGain);
+
+    // Pre-generate a single static white-noise buffer once (reused for all percussion & noise SFX!)
+    try {
+      const sr = this.ctx.sampleRate || 44100;
+      const len = Math.floor(sr * 1.5);
+      this.noiseBuffer = this.ctx.createBuffer(1, len, sr);
+      const data = this.noiseBuffer.getChannelData(0);
+      for (let i = 0; i < len; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+    } catch (e) {
+      this.noiseBuffer = null;
+    }
+  }
+
+  // Safe disconnection helper to guarantee audio nodes never leak into the Web Audio graph
+  cleanupNodes(nodes, delayMs = 150) {
+    if (!nodes || !nodes.length) return;
+    setTimeout(() => {
+      for (let i = 0; i < nodes.length; i++) {
+        try {
+          if (nodes[i] && nodes[i].disconnect) {
+            nodes[i].disconnect();
+          }
+        } catch (e) {}
+      }
+    }, delayMs);
   }
 
   resumeIfNeeded() {
@@ -210,6 +237,7 @@ class SoundSystem {
 
     osc.start(t);
     osc.stop(t + 0.22);
+    this.cleanupNodes([osc, gain], 240);
   }
 
   playLand() {
@@ -232,6 +260,7 @@ class SoundSystem {
 
     osc.start(t);
     osc.stop(t + 0.1);
+    this.cleanupNodes([osc, gain], 120);
   }
 
   playDuck() {
@@ -260,6 +289,7 @@ class SoundSystem {
 
     osc.start(t);
     osc.stop(t + 0.13);
+    this.cleanupNodes([osc, gain, filter], 150);
   }
 
   playCollision() {
@@ -267,30 +297,30 @@ class SoundSystem {
     this.resumeIfNeeded();
 
     const t = this.ctx.currentTime;
+    const nodes = [];
 
-    // Noise component
-    const bufferSize = this.ctx.sampleRate * 0.3;
-    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = Math.random() * 2 - 1;
+    // Noise component using pre-allocated noise buffer (zero allocation!)
+    if (this.noiseBuffer) {
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = this.noiseBuffer;
+
+      const noiseFilter = this.ctx.createBiquadFilter();
+      noiseFilter.type = 'bandpass';
+      noiseFilter.frequency.setValueAtTime(400, t);
+      noiseFilter.frequency.exponentialRampToValueAtTime(60, t + 0.28);
+
+      const noiseGain = this.ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.8, t);
+      noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.28);
+
+      noise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseGain.connect(this.sfxGain);
+
+      noise.start(t);
+      noise.stop(t + 0.3);
+      nodes.push(noise, noiseFilter, noiseGain);
     }
-
-    const noise = this.ctx.createBufferSource();
-    noise.buffer = buffer;
-
-    const noiseFilter = this.ctx.createBiquadFilter();
-    noiseFilter.type = 'bandpass';
-    noiseFilter.frequency.setValueAtTime(400, t);
-    noiseFilter.frequency.exponentialRampToValueAtTime(60, t + 0.28);
-
-    const noiseGain = this.ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.8, t);
-    noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.28);
-
-    noise.connect(noiseFilter);
-    noiseFilter.connect(noiseGain);
-    noiseGain.connect(this.sfxGain);
 
     // Low boom
     const boom = this.ctx.createOscillator();
@@ -305,10 +335,11 @@ class SoundSystem {
     boom.connect(boomGain);
     boomGain.connect(this.sfxGain);
 
-    noise.start(t);
     boom.start(t);
-    noise.stop(t + 0.3);
     boom.stop(t + 0.32);
+    nodes.push(boom, boomGain);
+
+    this.cleanupNodes(nodes, 350);
   }
 
   playLevelUp() {
@@ -318,6 +349,7 @@ class SoundSystem {
     const t = this.ctx.currentTime;
     const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99]; // C4, E4, G4, C5, E5, G5
     const stepTime = 0.07;
+    const allNodes = [];
 
     notes.forEach((freq, idx) => {
       const noteTime = t + idx * stepTime;
@@ -336,7 +368,10 @@ class SoundSystem {
 
       osc.start(noteTime);
       osc.stop(noteTime + 0.2);
+      allNodes.push(osc, gain);
     });
+
+    this.cleanupNodes(allNodes, (notes.length * stepTime + 0.25) * 1000);
   }
 
   playHighScore() {
@@ -349,6 +384,7 @@ class SoundSystem {
       { notes: [440.0, 554.37, 659.25], time: 0.16, dur: 0.14 }, // A maj
       { notes: [523.25, 659.25, 783.99], time: 0.34, dur: 0.45 } // C maj triumphant!
     ];
+    const allNodes = [];
 
     chords.forEach(chord => {
       chord.notes.forEach(freq => {
@@ -372,8 +408,11 @@ class SoundSystem {
 
         osc.start(startTime);
         osc.stop(startTime + chord.dur + 0.05);
+        allNodes.push(osc, gain, filter);
       });
     });
+
+    this.cleanupNodes(allNodes, 900);
   }
 
   playGameOver() {
@@ -383,6 +422,7 @@ class SoundSystem {
     const t = this.ctx.currentTime;
     const notes = [311.13, 293.66, 277.18, 261.63, 196.00]; // Sad descending tone
     const stepTime = 0.12;
+    const allNodes = [];
 
     notes.forEach((freq, idx) => {
       const startTime = t + idx * stepTime;
@@ -405,7 +445,10 @@ class SoundSystem {
 
       osc.start(startTime);
       osc.stop(startTime + 0.24);
+      allNodes.push(osc, gain, filter);
     });
+
+    this.cleanupNodes(allNodes, (notes.length * stepTime + 0.3) * 1000);
   }
 
   playBonus() {
@@ -428,6 +471,7 @@ class SoundSystem {
 
     osc.start(t);
     osc.stop(t + 0.2);
+    this.cleanupNodes([osc, gain], 220);
   }
 
   playButtonClick() {
@@ -450,6 +494,7 @@ class SoundSystem {
 
     osc.start(t);
     osc.stop(t + 0.06);
+    this.cleanupNodes([osc, gain], 80);
   }
 
   // --- Dynamic Procedural Background Music (BGM) ---
@@ -480,6 +525,11 @@ class SoundSystem {
   scheduleNextBeat() {
     if (!this.isPlayingMusic || !this.ctx) return;
 
+    if (this.seqTimer) {
+      clearTimeout(this.seqTimer);
+      this.seqTimer = null;
+    }
+
     // Tempo adapts based on level (120 BPM up to 160 BPM in Extreme)
     const tempos = [118, 124, 130, 138, 148, 162];
     this.tempo = tempos[Math.min(this.currentLevelIndex - 1, tempos.length - 1)];
@@ -497,14 +547,6 @@ class SoundSystem {
     if (!this.settings.musicEnabled || !this.ctx) return;
     const t = this.ctx.currentTime;
 
-    // 16-step patterns for Bass, Melody & Percussion
-    // Level 1: Desert (C Major Chiptune Adventure)
-    // Level 2: Sunset (Chillwave A Minor / F Maj)
-    // Level 3: Night (Mystic Deep Tech Pulse)
-    // Level 4: Jungle (Syncopated Tribal Groove)
-    // Level 5: Cyber (Cyberpunk Darksynth Drive)
-    // Level 6: Extreme (Fast Acid Glitch Rush)
-
     let bassNote = null;
     let leadNote = null;
     let hat = false;
@@ -515,14 +557,14 @@ class SoundSystem {
 
     if (level === 1) {
       // Desert
-      const bassProg = [130.81, 130.81, 164.81, 164.81, 174.61, 174.61, 196.00, 196.00]; // C3, E3, F3, G3
+      const bassProg = [130.81, 130.81, 164.81, 164.81, 174.61, 174.61, 196.00, 196.00];
       bassNote = (s16 % 2 === 0) ? bassProg[Math.floor(s16 / 2)] : null;
       const melody = [523.25, 0, 587.33, 0, 659.25, 587.33, 523.25, 0, 392.00, 0, 440.00, 523.25, 587.33, 0, 0, 0];
       leadNote = melody[s16];
       hat = (s16 % 4 === 2);
     } else if (level === 2) {
       // Sunset
-      const bassProg = [110.00, 110.00, 130.81, 130.81, 87.31, 87.31, 98.00, 98.00]; // A2, C3, F2, G2
+      const bassProg = [110.00, 110.00, 130.81, 130.81, 87.31, 87.31, 98.00, 98.00];
       bassNote = (s16 % 2 === 0) ? bassProg[Math.floor(s16 / 2)] : null;
       const melody = [440, 0, 523.25, 659.25, 0, 587.33, 523.25, 0, 392, 440, 0, 523.25, 440, 0, 392, 0];
       leadNote = melody[s16];
@@ -530,7 +572,7 @@ class SoundSystem {
       snare = (s16 === 4 || s16 === 12);
     } else if (level === 3) {
       // Night Mode
-      const bassProg = [73.42, 73.42, 73.42, 98.00, 82.41, 82.41, 73.42, 110.00]; // D2, G2, E2, A2
+      const bassProg = [73.42, 73.42, 73.42, 98.00, 82.41, 82.41, 73.42, 110.00];
       bassNote = (s16 % 2 === 0) ? bassProg[Math.floor(s16 / 2)] : null;
       const melody = [293.66, 0, 440, 0, 392, 0, 349.23, 0, 329.63, 293.66, 0, 440, 523.25, 0, 440, 0];
       leadNote = (s16 % 2 === 1) ? melody[s16] : null;
@@ -546,7 +588,7 @@ class SoundSystem {
       snare = (s16 === 4 || s16 === 10 || s16 === 14);
     } else if (level === 5) {
       // Cyber World
-      const bassProg = [65.41, 130.81, 65.41, 130.81, 77.78, 155.56, 87.31, 174.61]; // Fast 16th rolling bass
+      const bassProg = [65.41, 130.81, 65.41, 130.81, 77.78, 155.56, 87.31, 174.61];
       bassNote = bassProg[s16 % bassProg.length];
       const melody = [523.25, 622.25, 783.99, 622.25, 523.25, 932.33, 783.99, 622.25];
       leadNote = (s16 % 2 === 0) ? melody[(s16 / 2) % melody.length] : null;
@@ -583,6 +625,7 @@ class SoundSystem {
 
       osc.start(t);
       osc.stop(t + 0.13);
+      this.cleanupNodes([osc, filter, gain], 160);
     }
 
     // Play Synth Lead Melody
@@ -605,6 +648,7 @@ class SoundSystem {
 
       osc.start(t);
       osc.stop(t + 0.16);
+      this.cleanupNodes([osc, filter, gain], 190);
     }
 
     // Play Kick Drum
@@ -623,16 +667,13 @@ class SoundSystem {
 
       kickOsc.start(t);
       kickOsc.stop(t + 0.1);
+      this.cleanupNodes([kickOsc, kickGain], 120);
     }
 
-    // Play Hi-Hat
-    if (hat) {
-      const hatBuffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.03, this.ctx.sampleRate);
-      const data = hatBuffer.getChannelData(0);
-      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-
+    // Play Hi-Hat using pre-allocated noise buffer (zero allocation!)
+    if (hat && this.noiseBuffer) {
       const hatSource = this.ctx.createBufferSource();
-      hatSource.buffer = hatBuffer;
+      hatSource.buffer = this.noiseBuffer;
 
       const hatFilter = this.ctx.createBiquadFilter();
       hatFilter.type = 'highpass';
@@ -647,16 +688,14 @@ class SoundSystem {
       hatGain.connect(this.musicGain);
 
       hatSource.start(t);
+      hatSource.stop(t + 0.035);
+      this.cleanupNodes([hatSource, hatFilter, hatGain], 50);
     }
 
-    // Play Snare
-    if (snare) {
-      const snareBuffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.08, this.ctx.sampleRate);
-      const data = snareBuffer.getChannelData(0);
-      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-
+    // Play Snare using pre-allocated noise buffer (zero allocation!)
+    if (snare && this.noiseBuffer) {
       const snareSource = this.ctx.createBufferSource();
-      snareSource.buffer = snareBuffer;
+      snareSource.buffer = this.noiseBuffer;
 
       const snareFilter = this.ctx.createBiquadFilter();
       snareFilter.type = 'bandpass';
@@ -671,6 +710,8 @@ class SoundSystem {
       snareGain.connect(this.musicGain);
 
       snareSource.start(t);
+      snareSource.stop(t + 0.085);
+      this.cleanupNodes([snareSource, snareFilter, snareGain], 100);
     }
   }
 }
@@ -682,118 +723,133 @@ class SoundSystem {
 class ParticleSystem {
   constructor() {
     this.particles = [];
+    this.maxParticles = 40; // Strict particle budget for smooth mobile performance
   }
 
   reset() {
     this.particles = [];
   }
 
+  trimPool() {
+    if (this.particles.length > this.maxParticles) {
+      this.particles.splice(0, this.particles.length - this.maxParticles);
+    }
+  }
+
   // Dust puff when running on ground
   addRunDust(x, y) {
+    if (this.particles.length >= this.maxParticles) return;
     this.particles.push({
       type: 'circle',
       x: x + (Math.random() * 8 - 4),
       y: y - 2,
       vx: -(Math.random() * 2 + 1.5),
       vy: -(Math.random() * 1.5 + 0.5),
-      size: Math.random() * 4 + 3,
-      alpha: 0.65,
+      size: Math.random() * 3 + 2,
+      alpha: 0.6,
       color: '#cbd5e1',
-      decay: 0.035
+      decay: 0.04
     });
   }
 
   // Burst of dust on jump
   addJumpBurst(x, y) {
-    for (let i = 0; i < 7; i++) {
+    const count = 5;
+    for (let i = 0; i < count; i++) {
       this.particles.push({
         type: 'circle',
         x: x + (Math.random() * 20 - 10),
         y: y,
         vx: (Math.random() - 0.5) * 4,
         vy: -(Math.random() * 3 + 1),
-        size: Math.random() * 5 + 3,
-        alpha: 0.8,
+        size: Math.random() * 4 + 2,
+        alpha: 0.75,
         color: '#e2e8f0',
-        decay: 0.04
+        decay: 0.045
       });
     }
+    this.trimPool();
   }
 
   // Friction spark/dust stream while ducking/sliding
   addSlideDust(x, y) {
+    if (this.particles.length >= this.maxParticles) return;
     this.particles.push({
       type: 'circle',
       x: x + (Math.random() * 15 - 5),
       y: y - 1,
       vx: -(Math.random() * 5 + 3),
       vy: -(Math.random() * 1.2),
-      size: Math.random() * 3 + 2,
-      alpha: 0.7,
+      size: Math.random() * 2.5 + 1.5,
+      alpha: 0.65,
       color: Math.random() > 0.5 ? '#f97316' : '#cbd5e1',
-      decay: 0.05
+      decay: 0.06
     });
   }
 
   // Debris explosion upon collision
   addExplosion(x, y, color = '#ef4444') {
-    const count = 28;
+    const count = 20;
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const speed = Math.random() * 8 + 2;
+      const speed = Math.random() * 7 + 2;
       this.particles.push({
         type: 'debris',
         x: x,
         y: y,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
-        size: Math.random() * 6 + 3,
+        size: Math.random() * 5 + 3,
         rotation: Math.random() * Math.PI,
         vRot: (Math.random() - 0.5) * 0.4,
         alpha: 1.0,
         color: i % 2 === 0 ? color : '#facc15',
         gravity: 0.25,
-        decay: 0.025
+        decay: 0.03
       });
     }
+    this.trimPool();
   }
 
   // Celebratory confetti for New High Score and Level Up
   addConfetti(canvasWidth, canvasHeight) {
     const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'];
-    for (let i = 0; i < 45; i++) {
+    const count = 25;
+    for (let i = 0; i < count; i++) {
       this.particles.push({
         type: 'confetti',
         x: Math.random() * canvasWidth,
-        y: Math.random() * -50,
+        y: Math.random() * -30,
         vx: (Math.random() - 0.5) * 4,
         vy: Math.random() * 4 + 3,
-        size: Math.random() * 8 + 4,
+        size: Math.random() * 6 + 3,
         rotation: Math.random() * Math.PI,
         vRot: (Math.random() - 0.5) * 0.2,
         alpha: 1.0,
         color: colors[Math.floor(Math.random() * colors.length)],
         gravity: 0.08,
-        decay: 0.008
+        decay: 0.015
       });
     }
+    this.trimPool();
   }
 
   update(dt) {
+    const dtFactor = Math.min(dt * 60, 3.0);
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
-      p.x += p.vx;
-      p.y += p.vy;
+      p.x += p.vx * dtFactor;
+      p.y += p.vy * dtFactor;
 
       if (p.gravity) {
-        p.vy += p.gravity;
+        p.vy += p.gravity * dtFactor;
       }
 
       if (p.vRot) {
-        p.rotation += p.vRot;
+        p.rotation += p.vRot * dtFactor;
       }
 
-      p.alpha -= p.decay;
+      p.alpha -= p.decay * dtFactor;
 
       if (p.alpha <= 0) {
         this.particles.splice(i, 1);
@@ -802,8 +858,8 @@ class ParticleSystem {
   }
 
   draw(ctx) {
-    ctx.save();
-    for (const p of this.particles) {
+    for (let i = 0; i < this.particles.length; i++) {
+      const p = this.particles[i];
       ctx.globalAlpha = Math.max(0, p.alpha);
       ctx.fillStyle = p.color;
 
@@ -811,15 +867,12 @@ class ParticleSystem {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
-      } else if (p.type === 'debris' || p.type === 'confetti') {
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.rotation || 0);
-        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.7);
-        ctx.restore();
+      } else {
+        // Fast debris and confetti drawing without excessive matrix save/restore
+        ctx.fillRect(p.x - p.size * 0.5, p.y - p.size * 0.35, p.size, p.size * 0.7);
       }
     }
-    ctx.restore();
+    ctx.globalAlpha = 1.0;
   }
 }
 
@@ -975,11 +1028,12 @@ class BackgroundRenderer {
   }
 
   update(dt, gameSpeed) {
-    // Parallax scrolling
-    this.farScroll = (this.farScroll + gameSpeed * 0.12) % this.width;
-    this.midScroll = (this.midScroll + gameSpeed * 0.35) % this.width;
-    this.nearScroll = (this.nearScroll + gameSpeed * 0.65) % this.width;
-    this.groundScroll = (this.groundScroll + gameSpeed) % this.width;
+    const dtFactor = Math.min(dt * 60, 3.0);
+    // Parallax scrolling scaled by dtFactor for uniform speed on all refresh rates and under lag
+    this.farScroll = (this.farScroll + gameSpeed * 0.12 * dtFactor) % this.width;
+    this.midScroll = (this.midScroll + gameSpeed * 0.35 * dtFactor) % this.width;
+    this.nearScroll = (this.nearScroll + gameSpeed * 0.65 * dtFactor) % this.width;
+    this.groundScroll = (this.groundScroll + gameSpeed * dtFactor) % this.width;
 
     // Smooth environment transition
     if (this.transitionProgress < 1.0) {
@@ -1167,15 +1221,20 @@ class BackgroundRenderer {
     ctx.lineWidth = env.id === 5 || env.id === 6 ? 3 : 2;
     ctx.strokeStyle = env.groundAccent;
 
-    if (env.id === 5) {
-      ctx.shadowColor = '#06b6d4';
-      ctx.shadowBlur = 10;
-    }
-
     ctx.beginPath();
     ctx.moveTo(0, this.groundY);
     ctx.lineTo(this.width, this.groundY);
     ctx.stroke();
+
+    if (env.id === 5) {
+      // Clean GPU-accelerated neon glow line without offscreen shadowBlur rasterization
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.35)';
+      ctx.beginPath();
+      ctx.moveTo(0, this.groundY);
+      ctx.lineTo(this.width, this.groundY);
+      ctx.stroke();
+    }
 
     // Ground texture pebbles / cyber lines
     ctx.fillStyle = env.groundAccent;
@@ -1291,6 +1350,7 @@ class Dino {
   }
 
   update(dt, gameSpeed, onLandCallback) {
+    const dtFactor = Math.min(dt * 60, 3.0);
     this.animTime += dt * (gameSpeed * 1.8);
 
     // Blinking animation logic
@@ -1303,10 +1363,10 @@ class Dino {
       }
     }
 
-    // Apply Vertical Physics
+    // Apply Vertical Physics with dtFactor normalization
     if (!this.isGrounded) {
-      this.vy += this.gravity;
-      this.y += this.vy;
+      this.vy += this.gravity * dtFactor;
+      this.y += this.vy * dtFactor;
 
       const currentFloor = this.groundY - this.height;
       if (this.y >= currentFloor) {
@@ -1428,11 +1488,10 @@ class Dino {
     // Eye / Cyber Visor
     if (isCyber) {
       // Futuristic Glowing Cyber Visor!
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.35)';
+      ctx.fillRect(34, 5, 26, 10);
       ctx.fillStyle = '#06b6d4';
-      ctx.shadowColor = '#06b6d4';
-      ctx.shadowBlur = 8;
       ctx.fillRect(36, 7, 22, 6);
-      ctx.shadowBlur = 0;
     } else if (this.isDead) {
       // Dead "X" eye
       ctx.strokeStyle = '#0f172a';
@@ -1490,11 +1549,10 @@ class Dino {
 
     // Cyber Visor / Eye
     if (isCyber) {
+      ctx.fillStyle = 'rgba(6, 182, 212, 0.35)';
+      ctx.fillRect(64, 12, 18, 9);
       ctx.fillStyle = '#06b6d4';
-      ctx.shadowColor = '#06b6d4';
-      ctx.shadowBlur = 8;
       ctx.fillRect(66, 14, 14, 5);
-      ctx.shadowBlur = 0;
     } else {
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
@@ -1615,13 +1673,14 @@ class Obstacle {
   }
 
   update(dt, gameSpeed) {
-    this.x -= gameSpeed;
+    const dtFactor = Math.min(dt * 60, 3.0);
+    this.x -= gameSpeed * dtFactor;
 
     if (this.type === 'BIRD') {
       this.animTimer += dt * 9;
       this.wingState = Math.sin(this.animTimer);
       // Pterodactyls fly slightly faster than scenery
-      this.x -= gameSpeed * 0.15;
+      this.x -= (gameSpeed * 0.15) * dtFactor;
     } else if (this.type === 'CYBER_DRONE') {
       this.hoverTimer += dt * 3.5;
       this.y = this.baseY + Math.sin(this.hoverTimer) * 18;
@@ -1759,12 +1818,11 @@ class Obstacle {
     ctx.roundRect(4, 6, 38, 26, 8);
     ctx.fill();
 
-    // Neon Core Visor
+    // Neon Core Visor with GPU vector glow
+    ctx.fillStyle = 'rgba(6, 182, 212, 0.35)';
+    ctx.fillRect(8, 12, 30, 12);
     ctx.fillStyle = '#06b6d4';
-    ctx.shadowColor = '#06b6d4';
-    ctx.shadowBlur = 10;
     ctx.fillRect(10, 14, 26, 8);
-    ctx.shadowBlur = 0;
 
     // Propellers / Thrusters
     ctx.fillStyle = '#ef4444';
@@ -1808,8 +1866,6 @@ class Obstacle {
   drawRockSpikes(ctx) {
     // Glowing Crystal Spikes for Night Level
     ctx.fillStyle = '#3b82f6';
-    ctx.shadowColor = '#3b82f6';
-    ctx.shadowBlur = 8;
     ctx.beginPath();
     ctx.moveTo(4, this.height);
     ctx.lineTo(14, 8);
@@ -1821,7 +1877,11 @@ class Obstacle {
     ctx.lineTo(40, 14);
     ctx.lineTo(46, this.height);
     ctx.fill();
-    ctx.shadowBlur = 0;
+
+    // Soft outer neon glow stroke
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(147, 197, 253, 0.55)';
+    ctx.stroke();
   }
 }
 
@@ -2090,7 +2150,8 @@ class UltimateDinoGame {
     this.animationFrameId = null;
     this.orientationDismissed = false;
 
-    // Floating Bonus Layer
+    // Floating Bonus Layer & In-Canvas Queue
+    this.floatingBonuses = [];
     this.floatingLayer = document.getElementById('floating-bonuses-layer');
 
     // DOM UI Elements
@@ -2111,7 +2172,9 @@ class UltimateDinoGame {
 
   resizeCanvas() {
     const rect = this.canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
+    const isMobile = this.isMobileDevice();
+    const maxDpr = isMobile ? 1.5 : 2.0;
+    const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
 
     const w = rect.width || window.innerWidth || 1200;
     const h = rect.height || window.innerHeight || 500;
@@ -2121,8 +2184,8 @@ class UltimateDinoGame {
     this.VIRTUAL_WIDTH = Math.max(1000, Math.round(this.VIRTUAL_HEIGHT * aspect));
     this.GROUND_Y = 415;
 
-    this.canvas.width = this.VIRTUAL_WIDTH * dpr;
-    this.canvas.height = this.VIRTUAL_HEIGHT * dpr;
+    this.canvas.width = Math.round(this.VIRTUAL_WIDTH * dpr);
+    this.canvas.height = Math.round(this.VIRTUAL_HEIGHT * dpr);
 
     this.ctx.resetTransform();
     this.ctx.scale(dpr, dpr);
@@ -2760,7 +2823,8 @@ class UltimateDinoGame {
     this.levelMgr.reset();
     this.bg.setEnvironment(0);
 
-    this.floatingLayer.innerHTML = '';
+    this.floatingBonuses = [];
+    if (this.floatingLayer) this.floatingLayer.innerHTML = '';
     this.updateUI();
   }
 
@@ -2872,21 +2936,14 @@ class UltimateDinoGame {
   }
 
   addFloatingBonus(text, x, y) {
-    const el = document.createElement('div');
-    el.className = 'floating-bonus';
-    el.textContent = text;
-
-    // Convert virtual coords to percentage for fluid placement
-    const leftPct = (x / this.VIRTUAL_WIDTH) * 100;
-    const topPct = (y / this.VIRTUAL_HEIGHT) * 100;
-
-    el.style.left = `${leftPct}%`;
-    el.style.top = `${topPct}%`;
-
-    this.floatingLayer.appendChild(el);
-    setTimeout(() => {
-      if (el.parentNode) el.parentNode.removeChild(el);
-    }, 1200);
+    // Pure in-canvas floating text without DOM node allocations or layout reflows
+    this.floatingBonuses.push({
+      text,
+      x: Math.min(Math.max(x, 120), this.VIRTUAL_WIDTH - 120),
+      y: y - 20,
+      alpha: 1.0,
+      vy: 1.6
+    });
   }
 
   formatScore(val) {
@@ -3023,6 +3080,17 @@ class UltimateDinoGame {
       // 9. Update Particles
       this.particles.update(dt);
 
+      // 9b. Update Floating Bonuses (in-canvas, zero DOM reflows)
+      const dtFactor = Math.min(dt * 60, 3.0);
+      for (let i = this.floatingBonuses.length - 1; i >= 0; i--) {
+        const fb = this.floatingBonuses[i];
+        fb.y -= fb.vy * dtFactor;
+        fb.alpha -= 0.022 * dtFactor;
+        if (fb.alpha <= 0) {
+          this.floatingBonuses.splice(i, 1);
+        }
+      }
+
       // 10. Update HUD UI
       this.updateUI();
 
@@ -3060,6 +3128,20 @@ class UltimateDinoGame {
 
     // 4. Draw Particles (dust, confetti, sparks, debris)
     this.particles.draw(this.ctx);
+
+    // 5. Draw In-Canvas Floating Bonuses
+    if (this.floatingBonuses.length > 0) {
+      this.ctx.save();
+      this.ctx.font = 'bold 16px "Segoe UI", sans-serif';
+      this.ctx.textAlign = 'center';
+      for (let i = 0; i < this.floatingBonuses.length; i++) {
+        const fb = this.floatingBonuses[i];
+        const a = Math.max(0, Math.min(fb.alpha, 1.0));
+        this.ctx.fillStyle = `rgba(250, 204, 21, ${a})`;
+        this.ctx.fillText(fb.text, fb.x, fb.y);
+      }
+      this.ctx.restore();
+    }
   }
 }
 

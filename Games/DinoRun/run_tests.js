@@ -257,6 +257,34 @@ global.window.matchMedia = (query) => ({ matches: query.includes('coarse') });
 if (!game.isMobileDevice()) throw new Error('Touch device with coarse pointer should be detected as mobile');
 console.log('   Mobile detection: PASS');
 
+// Test 7: Performance Optimizations (dtFactor, DPR capping, and In-Canvas Bonuses)
+console.log('7. Testing Performance Optimizations...');
+// 7a. Delta time physics normalization
+const obs1 = new Obstacle('CACTUS_SMALL', 500, 415);
+const obs2 = new Obstacle('CACTUS_SMALL', 500, 415);
+// At 60fps (dt = 0.01667s)
+obs1.update(1 / 60, 10);
+// At 30fps (dt = 0.03333s)
+obs2.update(2 / 60, 10);
+const delta1 = 500 - obs1.x;
+const delta2 = 500 - obs2.x;
+if (Math.abs(delta2 - delta1 * 2) > 0.05) {
+  throw new Error(`dtFactor scaling failed: delta1=${delta1}, delta2=${delta2}`);
+}
+console.log('   dtFactor Delta-Time Normalization: PASS');
+
+// 7b. In-Canvas Floating Bonuses
+game.floatingBonuses = [];
+game.addFloatingBonus('+100 CLOSE CALL!', 300, 200);
+if (game.floatingBonuses.length !== 1) throw new Error('addFloatingBonus should add to queue');
+const bonus = game.floatingBonuses[0];
+if (bonus.alpha !== 1.0) throw new Error('Initial alpha should be 1.0');
+// Simulate game update
+game.state = 'PLAYING';
+game.update(0.016);
+if (game.floatingBonuses[0].alpha >= 1.0) throw new Error('Bonus alpha should decrease over time');
+console.log('   In-Canvas Floating Bonuses: PASS');
+
 if (game.animationFrameId) cancelAnimationFrame(game.animationFrameId);
 
 console.log('ALL VERIFICATION TESTS PASSED SUCCESSFULLY! 🚀');
