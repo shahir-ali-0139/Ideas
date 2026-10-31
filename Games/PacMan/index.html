@@ -179,23 +179,28 @@
           <span id="volume-text" class="volume-val">70%</span>
         </div>
 
-        <!-- Mobile Touch Directional Pad (D-Pad) -->
-        <div class="dpad-wrapper" id="dpad" aria-label="Touch Directional Pad">
-          <div class="dpad-grid">
-            <button type="button" class="dpad-btn dpad-up" id="dpad-up" aria-label="Move Up">▲</button>
-            <button type="button" class="dpad-btn dpad-left" id="dpad-left" aria-label="Move Left">◀</button>
-            <div class="dpad-center" aria-hidden="true"></div>
-            <button type="button" class="dpad-btn dpad-right" id="dpad-right" aria-label="Move Right">▶</button>
-            <button type="button" class="dpad-btn dpad-down" id="dpad-down" aria-label="Move Down">▼</button>
+        <!-- Mobile Swipe Gesture Hub (No Buttons) -->
+        <div class="swipe-control-panel" id="swipe-panel" aria-label="Swipe Control Zone">
+          <div class="swipe-indicator-track">
+            <span class="swipe-arrow swipe-arrow-up" id="swipe-arrow-up" aria-hidden="true">▲</span>
+            <div class="swipe-middle-row">
+              <span class="swipe-arrow swipe-arrow-left" id="swipe-arrow-left" aria-hidden="true">◀</span>
+              <div class="swipe-touch-zone" id="swipe-touch-zone">
+                <span class="touch-icon">👆</span>
+                <span class="swipe-label">SWIPE</span>
+              </div>
+              <span class="swipe-arrow swipe-arrow-right" id="swipe-arrow-right" aria-hidden="true">▶</span>
+            </div>
+            <span class="swipe-arrow swipe-arrow-down" id="swipe-arrow-down" aria-hidden="true">▼</span>
           </div>
-          <p class="dpad-hint">Touch arrows or swipe game board</p>
+          <p class="swipe-instruction">Swipe anywhere on screen or canvas to steer</p>
         </div>
       </div>
     </main>
 
     <!-- Footer Information -->
     <footer class="arcade-footer">
-      <span>Classic HTML5 Arcade Edition • Arrow Keys / WASD • Swipe & Touch Enabled</span>
+      <span>Classic HTML5 Arcade Edition • Arrow Keys / WASD • Full Gesture Swipe Controls</span>
     </footer>
   </div>
 
@@ -254,18 +259,10 @@
         </div>
 
         <div class="guide-block">
-          <h3>MOBILE & TABLET</h3>
-          <p>• Tap on-screen D-Pad arrow buttons</p>
-          <p>• Or swipe in any direction directly across the maze</p>
-          <p>• Corner buffering lets you turn smoothly without getting stuck!</p>
-        </div>
-
-        <div class="guide-block">
-          <h3>MULTI-DIRECTIONAL WARP TUNNELS</h3>
-          <p>• <strong>3 Horizontal Tunnels:</strong> Upper, Middle & Lower side tunnels warp left ◀▶ right</p>
-          <p>• <strong>2 Vertical Tunnels:</strong> Warp top ▲▼ bottom across columns 6 & 21</p>
-          <p>• Look for glowing cyan exit arrows (◀ ▶ ▲ ▼) at maze borders</p>
-          <p>• <em>Ghosts slow down inside tunnels—use them to escape!</em></p>
+          <h3>MOBILE & TABLET (SWIPE CONTROLS)</h3>
+          <p>• Swipe in any direction anywhere on the screen or canvas</p>
+          <p>• Continuous drag: change direction without lifting your finger!</p>
+          <p>• Corner pre-turn buffering lets you turn effortlessly around walls</p>
         </div>
 
         <div class="guide-block">

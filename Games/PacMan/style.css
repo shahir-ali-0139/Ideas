@@ -679,83 +679,88 @@ span.blinky-color, span.pinky-color, span.inky-color, span.clyde-color {
   text-align: right;
 }
 
-/* --- Mobile D-Pad (Touch Directional Pad) --- */
-.dpad-wrapper {
+/* --- Mobile Swipe Gesture Hub (No Buttons) --- */
+.swipe-control-panel {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   background: rgba(15, 23, 42, 0.85);
   border: 2px solid #1e293b;
   border-radius: 8px;
-  padding: 12px 10px;
+  padding: 10px 14px;
   touch-action: none;
-}
-
-.dpad-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 56px);
-  grid-template-rows: repeat(3, 56px);
-  gap: 6px;
-  justify-content: center;
-  align-items: center;
-  touch-action: none;
-}
-
-@media (min-width: 600px) and (max-width: 859px) {
-  .dpad-grid {
-    grid-template-columns: repeat(3, 62px);
-    grid-template-rows: repeat(3, 62px);
-  }
-}
-
-.dpad-btn {
-  background: #1e293b;
-  border: 3px solid #3b82f6;
-  border-radius: 8px;
-  color: #93c5fd;
-  font-size: 1.25rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  touch-action: none;
-  box-shadow: 0 4px 0 #1e3a8a, 0 0 10px rgba(59, 130, 246, 0.3);
-  transition: transform 0.05s ease, background-color 0.05s ease;
-}
-
-.dpad-btn:active, .dpad-btn.pressed {
-  background: #2563eb;
-  color: #ffffff;
-  transform: translateY(3px) scale(0.95);
-  box-shadow: 0 1px 0 #1e3a8a, 0 0 15px rgba(59, 130, 246, 0.7);
-}
-
-.dpad-up    { grid-column: 2; grid-row: 1; }
-.dpad-left  { grid-column: 1; grid-row: 2; }
-.dpad-center {
-  grid-column: 2;
-  grid-row: 2;
   width: 100%;
-  height: 100%;
-  background: #0f172a;
-  border-radius: 8px;
-  border: 1px dashed #334155;
+  user-select: none;
+  -webkit-user-select: none;
 }
-.dpad-right { grid-column: 3; grid-row: 2; }
-.dpad-down  { grid-column: 2; grid-row: 3; }
 
-.dpad-hint {
-  font-size: 0.55rem;
+.swipe-indicator-track {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  position: relative;
+}
+
+.swipe-middle-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.swipe-touch-zone {
+  width: 84px;
+  height: 52px;
+  background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+  border: 2px dashed #3b82f6;
+  border-radius: 26px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  box-shadow: inset 0 0 10px rgba(0, 102, 255, 0.2);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.swipe-control-panel:active .swipe-touch-zone,
+.swipe-touch-zone.swiping {
+  border-color: var(--color-pacman);
+  box-shadow: inset 0 0 15px rgba(255, 230, 0, 0.35), 0 0 10px rgba(255, 230, 0, 0.3);
+}
+
+.touch-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.swipe-label {
+  font-size: 0.52rem;
+  color: var(--color-maze-cyan);
+  letter-spacing: 1px;
+  font-weight: bold;
+}
+
+.swipe-arrow {
+  color: #475569;
+  font-size: 1.1rem;
+  transition: all 0.12s ease;
+  pointer-events: none;
+  line-height: 1;
+}
+
+.swipe-arrow.active {
+  color: var(--color-pacman);
+  text-shadow: 0 0 12px rgba(255, 230, 0, 0.9), 0 0 20px rgba(255, 230, 0, 0.6);
+  transform: scale(1.35);
+}
+
+.swipe-instruction {
+  font-size: 0.52rem;
   color: var(--color-text-dim);
   text-align: center;
-}
-
-/* Hide D-Pad by default on wide mouse desktops if preferred, but keep it accessible for touch laptops / users */
-@media (min-width: 1024px) {
-  .dpad-hint {
-    display: block;
-  }
+  letter-spacing: 0.5px;
 }
 
 /* --- Footer --- */
@@ -918,14 +923,22 @@ dialog::backdrop {
     gap: 6px;
   }
 
-  .dpad-grid {
-    grid-template-columns: repeat(3, 44px);
-    grid-template-rows: repeat(3, 44px);
+  .swipe-control-panel {
+    padding: 6px 10px;
     gap: 4px;
   }
 
-  .dpad-btn {
-    font-size: 1rem;
+  .swipe-touch-zone {
+    width: 68px;
+    height: 40px;
+  }
+
+  .touch-icon {
+    font-size: 0.95rem;
+  }
+
+  .swipe-instruction {
+    font-size: 0.46rem;
   }
 
   .arcade-footer {
